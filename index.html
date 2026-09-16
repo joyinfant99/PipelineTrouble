@@ -6,13 +6,30 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="googlebot" content="noindex, nofollow">
 <title>PIPELINE TROUBLE</title>
-<link rel="stylesheet" href="style.css?v=001" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=007" />
 </head>
 <body>
 <div id="app">
 
+  <!-- INTRO (attract mode) -->
+  <section id="screen-intro" class="screen active">
+    <div class="intro-art" id="intro-art" role="button" tabindex="0" aria-label="Press start">
+      <div class="intro-press-glow" id="intro-press-glow"></div>
+    </div>
+    <button class="btn intro-skip" id="btn-intro-skip" hidden>SKIP &#9654;</button>
+  </section>
+
+  <!-- INTRO VIDEO -->
+  <section id="screen-video" class="screen">
+    <video id="intro-video" class="intro-video" playsinline preload="auto"></video>
+    <button class="btn intro-skip" id="btn-video-skip">SKIP &#9654;</button>
+  </section>
+
   <!-- START -->
-  <section id="screen-start" class="screen active">
+  <section id="screen-start" class="screen">
     <div class="title-wrap">
       <h1 class="game-title">PIPELINE<br/>TROUBLE</h1>
       <p class="tagline">Pop the blockers. Reaccelerate the pipeline.</p>
@@ -33,6 +50,14 @@
           <button class="btn-toggle" data-speed="fast">FAST</button>
         </div>
       </div>
+      <div class="option-group">
+        <span class="option-label">DIFFICULTY</span>
+        <div class="toggle-row" id="difficulty-toggle">
+          <button class="btn-toggle" data-difficulty="easy">EASY</button>
+          <button class="btn-toggle" data-difficulty="normal">NORMAL</button>
+          <button class="btn-toggle" data-difficulty="pro">PRO</button>
+        </div>
+      </div>
     </div>
     <div class="menu">
       <button class="btn btn-primary" id="btn-start-game">START GAME</button>
@@ -40,6 +65,7 @@
       <button class="btn" id="btn-highscores">HIGHSCORES</button>
       <button class="btn" id="btn-howtoplay">HOW TO PLAY</button>
       <button class="btn" id="btn-sound">SOUND: ON</button>
+      <button class="btn" id="btn-fullscreen">FULLSCREEN: ON</button>
     </div>
   </section>
 
@@ -50,7 +76,8 @@
       <div class="setup-player" data-player="0">
         <h3>PLAYER 1</h3>
         <input type="text" class="player-name-input" maxlength="12" placeholder="P1 NAME" />
-        <div class="avatar-grid" data-player="0"></div>
+        <span class="setup-section-label">CHARACTER</span>
+        <div class="character-grid" data-player="0"></div>
         <div class="controls-remap">
           <div class="remap-row">
             <span>LEFT</span>
@@ -69,7 +96,8 @@
       <div class="setup-player" data-player="1">
         <h3>PLAYER 2</h3>
         <input type="text" class="player-name-input" maxlength="12" placeholder="P2 NAME" />
-        <div class="avatar-grid" data-player="1"></div>
+        <span class="setup-section-label">CHARACTER</span>
+        <div class="character-grid" data-player="1"></div>
         <div class="controls-remap">
           <div class="remap-row">
             <span>LEFT</span>
@@ -127,11 +155,11 @@
   <section id="screen-game" class="screen">
     <div class="hud">
       <div class="hud-left">
-        <div class="hud-mrr">CLOSED WON <span id="hud-mrr">&euro;0</span> / &euro;100K</div>
+        <div class="hud-mrr">CLOSED WON <span id="hud-mrr">&euro;0</span> / <span id="hud-mrr-target">&euro;100K</span></div>
         <div class="hud-mrr-bar"><div class="hud-mrr-bar-fill" id="hud-mrr-fill"></div></div>
         <div class="hud-lives-row">
           <span class="hud-lives-label">LIVES</span>
-          <canvas id="hud-lives-canvas" width="90" height="24"></canvas>
+          <canvas id="hud-lives-canvas" width="130" height="24"></canvas>
         </div>
       </div>
       <div class="hud-center">
@@ -143,6 +171,7 @@
     <div class="canvas-wrap">
       <canvas id="game-canvas" width="960" height="600"></canvas>
       <button class="btn-pause" id="btn-pause" title="Pause">❚❚</button>
+      <button class="btn-fullscreen-toggle" id="btn-fullscreen-toggle" title="Toggle fullscreen">⛶</button>
       <div class="pause-overlay" id="pause-overlay" hidden>
         <div class="pause-box">
           <h2>PAUSED</h2>
@@ -177,15 +206,15 @@
 
 </div>
 
-<script src="config.js?v=001"></script>
-<script src="assets.js?v=001"></script>
-<script src="storage.js?v=001"></script>
-<script src="audio.js?v=001"></script>
-<script src="input.js?v=001"></script>
-<script src="entities.js?v=001"></script>
-<script src="score.js?v=001"></script>
-<script src="game.js?v=001"></script>
-<script src="ui.js?v=001"></script>
-<script src="main.js?v=001"></script>
+<script src="config.js?v=007"></script>
+<script src="assets.js?v=007"></script>
+<script src="storage.js?v=007"></script>
+<script src="audio.js?v=007"></script>
+<script src="input.js?v=007"></script>
+<script src="entities.js?v=007"></script>
+<script src="score.js?v=007"></script>
+<script src="game.js?v=007"></script>
+<script src="ui.js?v=007"></script>
+<script src="main.js?v=007"></script>
 </body>
 </html>

@@ -20,10 +20,15 @@ const StorageManager = {
   },
 
   getPlayers() {
-    return StorageManager.get(CONFIG.STORAGE_KEYS.players, [
-      { name: 'PLAYER 1', avatar: CONFIG.AVATARS[0], controls: { ...CONFIG.DEFAULT_CONTROLS[0] } },
-      { name: 'PLAYER 2', avatar: CONFIG.AVATARS[1], controls: { ...CONFIG.DEFAULT_CONTROLS[1] } },
+    const players = StorageManager.get(CONFIG.STORAGE_KEYS.players, [
+      { name: 'PLAYER 1', character: 0, controls: { ...CONFIG.DEFAULT_CONTROLS[0] } },
+      { name: 'PLAYER 2', character: 1, controls: { ...CONFIG.DEFAULT_CONTROLS[1] } },
     ]);
+    // profiles saved before characters existed have no character picked yet
+    players.forEach((p, i) => {
+      if (typeof p.character !== 'number') p.character = i % CONFIG.CHARACTERS.length;
+    });
+    return players;
   },
 
   savePlayers(players) {
@@ -39,7 +44,7 @@ const StorageManager = {
   },
 
   getMode() {
-    return StorageManager.get(CONFIG.STORAGE_KEYS.mode, 'multi');
+    return StorageManager.get(CONFIG.STORAGE_KEYS.mode, 'single');
   },
 
   saveMode(mode) {
@@ -52,6 +57,22 @@ const StorageManager = {
 
   saveBubbleSpeed(speed) {
     StorageManager.set(CONFIG.STORAGE_KEYS.bubbleSpeed, speed);
+  },
+
+  getDifficulty() {
+    return StorageManager.get(CONFIG.STORAGE_KEYS.difficulty, 'normal');
+  },
+
+  saveDifficulty(difficulty) {
+    StorageManager.set(CONFIG.STORAGE_KEYS.difficulty, difficulty);
+  },
+
+  getFullscreen() {
+    return StorageManager.get(CONFIG.STORAGE_KEYS.fullscreen, true);
+  },
+
+  saveFullscreen(enabled) {
+    StorageManager.set(CONFIG.STORAGE_KEYS.fullscreen, enabled);
   },
 
   getHighscores() {

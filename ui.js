@@ -6,6 +6,8 @@ const UI = {
 
   init() {
     this.screens = {
+      intro: document.getElementById('screen-intro'),
+      video: document.getElementById('screen-video'),
       start: document.getElementById('screen-start'),
       setup: document.getElementById('screen-setup'),
       how: document.getElementById('screen-how'),
@@ -22,19 +24,147 @@ const UI = {
     this._wireGameControls();
     this._wireScorecard();
     this._wireHighscores();
+    this._wireIntro();
 
-    this.showScreen('start');
+    this.showScreen('intro');
   },
 
   showScreen(name) {
     Object.values(this.screens).forEach((s) => s.classList.remove('active'));
     this.screens[name].classList.add('active');
+    this._syncMenuMusic(name);
+  },
+
+  // ---------- Menu music ----------
+  // One looping track behind every menu. It is ducked while the intro narrator speaks
+  // and paused for the video and the round, both of which bring their own audio.
+  _syncMenuMusic(screenName) {
+    if (!this.menuMusic) return; // nothing to sync until the player has pressed start
+    const silentScreen = screenName === 'video' || screenName === 'game';
+    if (silentScreen || !AudioManager.enabled) {
+      this.menuMusic.pause();
+      return;
+    }
+    this.menuMusic.play().catch(() => {});
+    this._fadeMusicTo(CONFIG.INTRO.musicVolume, 600);
+  },
+
+  _fadeMusicTo(target, ms) {
+    const music = this.menuMusic;
+    if (!music) return;
+    clearInterval(this._musicFade);
+    const stepMs = 40;
+    const delta = (target - music.volume) / Math.max(1, ms / stepMs);
+    this._musicFade = setInterval(() => {
+      const next = music.volume + delta;
+      const arrived = delta >= 0 ? next >= target : next <= target;
+      music.volume = Math.min(1, Math.max(0, arrived ? target : next));
+      if (arrived) clearInterval(this._musicFade);
+    }, stepMs);
+  },
+
+  // ---------- Attract-mode intro ----------
+  // art (press start) -> narration over the art -> main menu, with the intro music
+  // carrying on underneath. The intro video plays later, as a briefing on START GAME.
+  _wireIntro() {
+    this.introStage = 'attract';
+    this.introMedia = {};
+
+    const art = document.getElementById('intro-art');
+    const begin = () => this._beginIntro();
+    art.addEventListener('click', begin);
+    art.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        begin();
+      }
+    });
+    this._introKeyHandler = (e) => {
+      if (this.introStage === 'attract' && this.screens.intro.classList.contains('active')) {
+        e.preventDefault();
+        begin();
+      }
+    };
+    window.addEventListener('keydown', this._introKeyHandler);
+
+    document.getElementById('btn-intro-skip').addEventListener('click', () => this._finishIntro());
+    document.getElementById('btn-video-skip').addEventListener('click', () => this._endBriefing());
+
+    const video = document.getElementById('intro-video');
+    video.addEventListener('ended', () => this._endBriefing());
+    video.addEventListener('error', () => this._endBriefing());
+  },
+
+  _beginIntro() {
+    if (this.introStage !== 'attract') return;
+    this.introStage = 'narration';
+
+    // this click is the browser's required gesture — unlock the game's synth audio too
+    AudioManager.ensureCtx();
+    if (StorageManager.getFullscreen()) this.requestFullscreen();
+
+    document.getElementById('intro-press-glow').hidden = true;
+    document.getElementById('btn-intro-skip').hidden = false;
+
+    if (!AudioManager.enabled) {
+      this._finishIntro();
+      return;
+    }
+
+    // starts ducked — the narrator is talking over it; _finishIntro brings it back up
+    this.menuMusic = new Audio(encodeURI(CONFIG.INTRO.music));
+    this.menuMusic.loop = true;
+    this.menuMusic.volume = CONFIG.INTRO.musicVolumeDucked;
+    this.menuMusic.play().catch(() => {});
+
+    const narration = new Audio(encodeURI(CONFIG.INTRO.narration));
+    narration.addEventListener('ended', () => this._finishIntro());
+    narration.addEventListener('error', () => this._finishIntro());
+    narration.play().catch(() => this._finishIntro());
+    this.narration = narration;
+  },
+
+  // narration over — showScreen fades the music back up to full menu level
+  _finishIntro() {
+    if (this.introStage === 'menu') return;
+    this.introStage = 'menu';
+
+    if (this.narration) {
+      this.narration.pause();
+      this.narration = null;
+    }
+
+    window.removeEventListener('keydown', this._introKeyHandler);
+    this.showScreen('start');
+  },
+
+  // ---------- Mission briefing ----------
+  // The intro video plays between START GAME and the first round. PLAY AGAIN skips it,
+  // so repeat runs go straight back into the action.
+  _playBriefing(onDone) {
+    this._briefingDone = onDone;
+
+    const video = document.getElementById('intro-video');
+    if (!video.getAttribute('src')) video.src = encodeURI(CONFIG.INTRO.video);
+    video.muted = !AudioManager.enabled;
+    video.currentTime = 0;
+    this.showScreen('video');
+    video.play().catch(() => this._endBriefing());
+  },
+
+  _endBriefing() {
+    const done = this._briefingDone;
+    this._briefingDone = null;
+    if (!done) return; // stray 'ended' after the player already skipped
+
+    document.getElementById('intro-video').pause();
+    done();
   },
 
   _wireStart() {
     document.getElementById('btn-start-game').addEventListener('click', () => {
       AudioManager.ensureCtx();
-      this.startGame();
+      this._playBriefing(() => this.startGame());
     });
     document.getElementById('btn-customize').addEventListener('click', () => {
       this.openSetup();
@@ -52,6 +182,11 @@ const UI = {
     soundBtn.addEventListener('click', () => {
       const on = AudioManager.toggle();
       soundBtn.textContent = `SOUND: ${on ? 'ON' : 'OFF'}`;
+      if (this.narration && !on) {
+        this.narration.pause();
+        this.narration = null;
+      }
+      this._syncMenuMusic('start');
     });
 
     // mode toggle (1 player / 2 player)
@@ -77,6 +212,28 @@ const UI = {
         btn.classList.add('active');
       });
     });
+
+    // difficulty toggle
+    const difficulty = StorageManager.getDifficulty();
+    const difficultyToggle = document.getElementById('difficulty-toggle');
+    difficultyToggle.querySelectorAll('.btn-toggle').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.difficulty === difficulty);
+      btn.addEventListener('click', () => {
+        StorageManager.saveDifficulty(btn.dataset.difficulty);
+        difficultyToggle.querySelectorAll('.btn-toggle').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // fullscreen toggle — on by default, requested automatically when a game starts
+    const fsBtn = document.getElementById('btn-fullscreen');
+    const fsOn = StorageManager.getFullscreen();
+    fsBtn.textContent = `FULLSCREEN: ${fsOn ? 'ON' : 'OFF'}`;
+    fsBtn.addEventListener('click', () => {
+      const on = !StorageManager.getFullscreen();
+      StorageManager.saveFullscreen(on);
+      fsBtn.textContent = `FULLSCREEN: ${on ? 'ON' : 'OFF'}`;
+    });
   },
 
   _wireHow() {
@@ -92,9 +249,10 @@ const UI = {
       .map((p, i) => {
         const c = p.controls;
         const shootKeys = [this._keyLabel(c.shoot), c.shootAlt ? this._keyLabel(c.shootAlt) : null].filter(Boolean).join(' or ');
+        const char = CONFIG.CHARACTERS[p.character] || CONFIG.CHARACTERS[0];
         return `
         <div class="how-controls-card">
-          <strong>${p.avatar} ${p.name || `PLAYER ${i + 1}`}</strong>
+          <strong><img class="how-avatar" src="${encodeURI(char.up)}" alt="" /> ${p.name || `PLAYER ${i + 1}`}</strong>
           <p>${this._keyLabel(c.left)} / ${this._keyLabel(c.right)} = MOVE</p>
           <p>${shootKeys} = SHOOT</p>
         </div>`;
@@ -121,7 +279,9 @@ const UI = {
 
     document.getElementById('btn-pause-quit').addEventListener('click', () => {
       if (this.currentGame) this.currentGame.stop();
+      AudioManager.stopMusic();
       overlay.hidden = true;
+      this.exitFullscreen();
       this.showScreen('start');
     });
 
@@ -130,6 +290,23 @@ const UI = {
         doPause();
       }
     });
+
+    document.getElementById('btn-fullscreen-toggle').addEventListener('click', () => {
+      if (document.fullscreenElement) this.exitFullscreen();
+      else this.requestFullscreen();
+    });
+  },
+
+  requestFullscreen() {
+    const el = document.getElementById('app');
+    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  },
+
+  exitFullscreen() {
+    if (!document.fullscreenElement) return;
+    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
   },
 
   openSetup() {
@@ -147,18 +324,21 @@ const UI = {
       nameInput.value = cfg.name;
       nameInput.placeholder = `P${idx + 1} NAME`;
 
-      const avatarGrid = el.querySelector('.avatar-grid');
-      avatarGrid.innerHTML = '';
-      CONFIG.AVATARS.forEach((av) => {
+      const charGrid = el.querySelector('.character-grid');
+      charGrid.innerHTML = '';
+      CONFIG.CHARACTERS.forEach((char, charIdx) => {
         const btn = document.createElement('button');
-        btn.className = 'avatar-btn' + (av === cfg.avatar ? ' selected' : '');
-        btn.textContent = av;
+        btn.className = 'character-btn' + (charIdx === cfg.character ? ' selected' : '');
+        btn.innerHTML = `
+          <img src="${encodeURI(char.up)}" alt="${char.name}" />
+          <span style="color:${char.color}">${char.name}</span>
+        `;
         btn.addEventListener('click', () => {
-          cfg.avatar = av;
-          avatarGrid.querySelectorAll('.avatar-btn').forEach((b) => b.classList.remove('selected'));
+          cfg.character = charIdx;
+          charGrid.querySelectorAll('.character-btn').forEach((b) => b.classList.remove('selected'));
           btn.classList.add('selected');
         });
-        avatarGrid.appendChild(btn);
+        charGrid.appendChild(btn);
       });
 
       el.querySelectorAll('.remap-btn').forEach((remapBtn) => {
@@ -219,22 +399,32 @@ const UI = {
         onBonusCaptured: (text) => this._showBanner(text, CONFIG.COLORS.cyan),
         onEnd: (payload) => this._onGameEnd(payload),
       },
-      { mode: StorageManager.getMode(), bubbleSpeed: StorageManager.getBubbleSpeed() }
+      {
+        mode: StorageManager.getMode(),
+        bubbleSpeed: StorageManager.getBubbleSpeed(),
+        difficulty: StorageManager.getDifficulty(),
+      }
     );
 
+    document.getElementById('hud-mrr-target').textContent = `€${this.currentGame.difficultyPreset.targetMrr.toLocaleString()}`;
+
     this._buildHudPlayers();
-    this._renderLives(this.currentGame.lives);
+    this._renderLives(this.currentGame.lives, this.currentGame.maxLives);
     this.currentGame.start();
+
+    if (StorageManager.getFullscreen()) this.requestFullscreen();
+    AudioManager.startMusic();
   },
 
-  _renderLives(lives) {
+  _renderLives(lives, maxLives) {
     const canvas = document.getElementById('hud-lives-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const iconSize = 20;
     const gap = 6;
-    for (let i = 0; i < CONFIG.MAX_LIVES; i++) {
+    const max = maxLives || (this.currentGame ? this.currentGame.maxLives : CONFIG.DIFFICULTY_PRESETS.normal.livesMax);
+    for (let i = 0; i < max; i++) {
       const cx = 12 + i * (iconSize + gap);
       const cy = canvas.height / 2;
       const active = i < lives;
@@ -263,14 +453,15 @@ const UI = {
       div.className = 'hud-player';
       div.id = `hud-player-${p.index}`;
       div.style.color = p.color;
-      div.innerHTML = `<span class="hud-avatar">${p.avatar}</span><span class="hud-name">${p.name}</span>`;
+      const char = CONFIG.CHARACTERS[p.character];
+      div.innerHTML = `<img class="hud-avatar" src="${encodeURI(char.up)}" alt="" /><span class="hud-name">${p.name}</span>`;
       container.appendChild(div);
     });
   },
 
   _updateHud(state) {
     document.getElementById('hud-mrr').textContent = `€${state.mrr.toLocaleString()}`;
-    const pct = Math.min(100, (state.mrr / CONFIG.TARGET_MRR) * 100);
+    const pct = Math.min(100, (state.mrr / state.targetMrr) * 100);
     document.getElementById('hud-mrr-fill').style.width = `${pct}%`;
     document.getElementById('hud-blockers').textContent = state.blockersRemoved;
 
@@ -312,7 +503,7 @@ const UI = {
       this.showScreen('scorecard');
 
       StorageManager.saveHighscore({
-        players: result.players.map((p) => ({ name: p.name, avatar: p.avatar })),
+        players: result.players.map((p) => ({ name: p.name, character: p.character })),
         mrr: result.mrr,
         blockersRemoved: result.blockersRemoved,
         timeRemaining: Math.round(result.timeRemaining),
@@ -337,7 +528,8 @@ const UI = {
       <div class="sc-stat"><span class="sc-label">BLOCKERS REMOVED</span><span class="sc-value">${result.blockersRemoved}</span></div>
       <div class="sc-stat"><span class="sc-label">DEALS REACCELERATED</span><span class="sc-value">${result.dealsReaccelerated}</span></div>
       <div class="sc-stat"><span class="sc-label">TIME REMAINING</span><span class="sc-value">${Math.round(result.timeRemaining)}s</span></div>
-      <div class="sc-stat"><span class="sc-label">LIVES REMAINING</span><span class="sc-value">${result.livesRemaining} / ${CONFIG.MAX_LIVES}</span></div>
+      <div class="sc-stat"><span class="sc-label">LIVES REMAINING</span><span class="sc-value">${result.livesRemaining} / ${result.maxLives}</span></div>
+      <div class="sc-stat"><span class="sc-label">DIFFICULTY</span><span class="sc-value">${result.difficulty}</span></div>
     `;
 
     const playersEl = document.getElementById('scorecard-players');
@@ -345,8 +537,9 @@ const UI = {
     result.players.forEach((p) => {
       const div = document.createElement('div');
       div.className = 'sc-player-card';
+      const char = CONFIG.CHARACTERS[p.character] || CONFIG.CHARACTERS[0];
       div.innerHTML = `
-        <div class="sc-player-head"><span class="sc-avatar">${p.avatar}</span><span>${p.name}</span></div>
+        <div class="sc-player-head"><img class="sc-avatar" src="${encodeURI(char.up)}" alt="" /><span>${p.name}</span></div>
         <div class="sc-player-row">SHOTS FIRED: ${p.shotsFired}</div>
         <div class="sc-player-row">ACCURACY: ${p.accuracy}%</div>
         <div class="sc-player-row">MRR CONTRIBUTION: €${p.mrrContribution.toLocaleString()}</div>
@@ -386,7 +579,14 @@ const UI = {
     }
     el.innerHTML = list
       .map((entry, i) => {
-        const names = entry.players.map((p) => `${p.avatar} ${p.name}`).join(' & ');
+        // entries saved before characters existed only carry an emoji avatar
+        const names = entry.players
+          .map((p) => {
+            const char = CONFIG.CHARACTERS[p.character];
+            const icon = char ? `<img class="hs-avatar" src="${encodeURI(char.up)}" alt="" />` : p.avatar || '';
+            return `${icon} ${p.name}`;
+          })
+          .join(' & ');
         return `
         <div class="hs-row">
           <span class="hs-rank">#${i + 1}</span>

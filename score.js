@@ -1,6 +1,7 @@
 // ScoreManager — tracks round-level scoring state
 class ScoreManager {
-  constructor() {
+  constructor(targetMrr) {
+    this.targetMrr = targetMrr || CONFIG.TARGET_MRR;
     this.reset();
   }
 
@@ -34,6 +35,6 @@ class ScoreManager {
   }
 
   get isTargetReached() {
-    return this.mrr >= CONFIG.TARGET_MRR;
+    return this.mrr >= this.targetMrr;
   }
 }

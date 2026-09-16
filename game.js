@@ -6,7 +6,10 @@ class Game {
     this.callbacks = callbacks || {};
     options = options || {};
     this.mode = options.mode === 'single' ? 'single' : 'multi';
-    this.speedMultiplier = CONFIG.BUBBLE_SPEED_PRESETS[options.bubbleSpeed] || 1;
+    this.difficulty = CONFIG.DIFFICULTY_PRESETS[options.difficulty] ? options.difficulty : 'normal';
+    this.difficultyPreset = CONFIG.DIFFICULTY_PRESETS[this.difficulty];
+    this.speedMultiplier =
+      (CONFIG.BUBBLE_SPEED_PRESETS[options.bubbleSpeed] || 1) * this.difficultyPreset.blockerSpeedMult;
 
     const groundY = CONFIG.CANVAS_H - 24;
     const activeConfigs = this.mode === 'single' ? [playersConfig[0]] : playersConfig;
@@ -16,7 +19,7 @@ class Game {
         : [CONFIG.CANVAS_W * 0.33 - CONFIG.PLAYER_W / 2, CONFIG.CANVAS_W * 0.67 - CONFIG.PLAYER_W / 2];
 
     this.players = activeConfigs.map(
-      (cfg, i) => new Player(i, cfg.name, cfg.avatar, cfg.controls, startXs[i], groundY)
+      (cfg, i) => new Player(i, cfg.name, cfg.controls, startXs[i], groundY, cfg.character)
     );
     InputManager.setControls(this.players.map((p) => p.controls));
 
@@ -28,9 +31,10 @@ class Game {
     this._nextDealId = 1;
     this._nextBonusBubbleAt = 0;
 
-    this.score = new ScoreManager();
-    this.lives = CONFIG.STARTING_LIVES;
-    this.timeRemaining = CONFIG.ROUND_DURATION;
+    this.score = new ScoreManager(this.difficultyPreset.targetMrr);
+    this.maxLives = this.difficultyPreset.livesMax;
+    this.lives = this.maxLives;
+    this.timeRemaining = this.difficultyPreset.roundDuration;
     this.running = false;
     this.ended = false;
     this.paused = false;
@@ -40,6 +44,10 @@ class Game {
     this._rafId = null;
 
     this.groundY = groundY;
+
+    // screen shake — punchy feedback on powerful hits
+    this._shakeUntil = 0;
+    this._shakeMag = 0;
   }
 
   start() {
@@ -60,6 +68,8 @@ class Game {
 
   togglePause() {
     this.paused = !this.paused;
+    if (this.paused) AudioManager.pauseMusic();
+    else AudioManager.resumeMusic();
     return this.paused;
   }
 
@@ -88,12 +98,32 @@ class Game {
   }
 
   _spawnProjectile(player) {
-    const x = player.x + player.w / 2 - CONFIG.PROJECTILE_W / 2;
-    const y = player.y - 8;
+    const x = player.muzzleX - CONFIG.PROJECTILE_W / 2;
+    const y = player.muzzleY;
     const activeForPlayer = this.projectiles.filter((p) => p.ownerIndex === player.index && p.alive).length;
     if (activeForPlayer >= CONFIG.MAX_PROJECTILES_PER_PLAYER) return;
     this.projectiles.push(new Projectile(x, y, player.index));
+    this._muzzleFlash(player.muzzleX, y, player.color);
+    this._shake(90, 3);
     AudioManager.shoot();
+  }
+
+  _muzzleFlash(x, y, color) {
+    for (let i = 0; i < 6; i++) {
+      const p = new Particle(x, y, i % 2 === 0 ? CONFIG.COLORS.white : color);
+      p.vx = (Math.random() - 0.5) * 180;
+      p.vy = -160 - Math.random() * 140;
+      p.life = 140 + Math.random() * 60;
+      p.maxLife = p.life;
+      p.size = 2 + Math.random() * 2;
+      this.particles.push(p);
+    }
+  }
+
+  _shake(durationMs, magnitude) {
+    const now = performance.now();
+    this._shakeUntil = Math.max(this._shakeUntil, now + durationMs);
+    this._shakeMag = Math.max(this._shakeMag, magnitude);
   }
 
   _loop(ts) {
@@ -116,7 +146,7 @@ class Game {
 
     this.timeRemaining -= dt;
     this._sinceLastSpawn += dt * 1000;
-    if (this._sinceLastSpawn >= CONFIG.SPAWN_INTERVAL_MS) {
+    if (this._sinceLastSpawn >= this.difficultyPreset.spawnIntervalMs) {
       this._sinceLastSpawn = 0;
       this._spawnDeal();
     }
@@ -205,9 +235,10 @@ class Game {
         if (this._circleRectOverlap(b, { x: p.x, y: p.y, w: p.w, h: p.h })) {
           const wasHit = p.hitByBlocker();
           if (wasHit) {
-            this.score.applyPenalty(CONFIG.PLAYER_HIT_PENALTY);
+            this.score.applyPenalty(this.difficultyPreset.hitPenalty);
             this.lives = Math.max(0, this.lives - 1);
             AudioManager.playerHit();
+            this._shake(220, 10);
             if (this.callbacks.onPlayerHit) this.callbacks.onPlayerHit(p);
             if (this.callbacks.onLivesChanged) this.callbacks.onLivesChanged(this.lives);
           }
@@ -227,7 +258,9 @@ class Game {
   _onBlockerHit(b, ownerIndex) {
     b.alive = false;
     AudioManager.hit();
-    spawnBurst(this.particles, b.x, b.y, b.color);
+    // tier 0 (biggest blocker) gets the fattest burst
+    spawnBurst(this.particles, b.x, b.y, b.color, b.tier === 0 ? CONFIG.PARTICLE_COUNT + 10 : undefined);
+    this._shake(140, b.tier === 0 ? 7 : 4);
     this.score.addBlockerRemoved(ownerIndex, this.players);
 
     const dealId = b.dealId;
@@ -247,6 +280,9 @@ class Game {
       this.blockers.push(child1, child2);
       remaining += 2;
       AudioManager.split();
+    } else {
+      // nothing left to split off — this one burst for good
+      AudioManager.coinBurst();
     }
 
     if (remaining <= 0) {
@@ -267,7 +303,7 @@ class Game {
     this._nextBonusBubbleAt = ts + this._randomBonusDelay();
     spawnBurst(this.particles, bubble.x, bubble.y, CONFIG.COLORS.white, CONFIG.PARTICLE_COUNT + 6);
 
-    if (this.lives < CONFIG.MAX_LIVES) {
+    if (this.lives < this.maxLives) {
       this.lives += 1;
       AudioManager.lifeGained();
       if (this.callbacks.onLivesChanged) this.callbacks.onLivesChanged(this.lives);
@@ -294,6 +330,7 @@ class Game {
     this.ended = true;
     this.running = false;
     this._endReason = reason;
+    AudioManager.stopMusic();
     if (reason === 'WON') AudioManager.win();
     else AudioManager.lose();
     if (this.callbacks.onEnd) {
@@ -312,9 +349,11 @@ class Game {
       dealsReaccelerated: this.score.dealsReaccelerated,
       timeRemaining: Math.max(0, this.timeRemaining),
       livesRemaining: this.lives,
+      maxLives: this.maxLives,
+      difficulty: this.difficultyPreset.label,
       players: this.players.map((p) => ({
         name: p.name,
-        avatar: p.avatar,
+        character: p.character,
         shotsFired: p.shotsFired,
         blockersHit: p.blockersHit,
         mrrContribution: p.mrrContribution,
@@ -327,26 +366,48 @@ class Game {
   _getHudState() {
     return {
       mrr: Math.max(0, Math.round(this.score.mrr - this.score.pipelinePenalty)),
+      targetMrr: this.difficultyPreset.targetMrr,
       blockersRemoved: this.score.blockersRemoved,
       timeRemaining: Math.max(0, this.timeRemaining),
       lives: this.lives,
+      maxLives: this.maxLives,
       players: this.players,
     };
   }
 
   _render() {
     const ctx = this.ctx;
+    ctx.save();
+
+    const now = performance.now();
+    if (now < this._shakeUntil) {
+      const falloff = (this._shakeUntil - now) / 220;
+      const mag = this._shakeMag * Math.max(0, Math.min(1, falloff));
+      ctx.translate((Math.random() - 0.5) * mag, (Math.random() - 0.5) * mag);
+    } else {
+      this._shakeMag = 0;
+    }
+
     ctx.fillStyle = CONFIG.COLORS.bg;
-    ctx.fillRect(0, 0, CONFIG.CANVAS_W, CONFIG.CANVAS_H);
+    ctx.fillRect(-20, -20, CONFIG.CANVAS_W + 40, CONFIG.CANVAS_H + 40);
+
+    if (Assets.drawBackground(ctx, CONFIG.CANVAS_W, CONFIG.CANVAS_H)) {
+      // knock the city art back so the neon blockers and labels stay readable on top of it
+      ctx.fillStyle = 'rgba(18, 10, 42, 0.45)';
+      ctx.fillRect(-20, -20, CONFIG.CANVAS_W + 40, CONFIG.CANVAS_H + 40);
+    }
 
     // floor line — sits right at the players' feet (this.groundY), previously this
     // added player height a second time and drew 18px below the visible canvas.
+    ctx.save();
+    ctx.globalAlpha = 0.5;
     ctx.strokeStyle = CONFIG.COLORS.cyan;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, this.groundY + 2);
     ctx.lineTo(CONFIG.CANVAS_W, this.groundY + 2);
     ctx.stroke();
+    ctx.restore();
 
     for (const b of this.blockers) b.draw(ctx);
     if (this.bonusBubble) this.bonusBubble.draw(ctx);
@@ -358,6 +419,8 @@ class Game {
     // above every other layer no matter how small the ball has shrunk.
     for (const b of this.blockers) this._drawLabel(ctx, b.x, b.y + b.radius, b.label, b.color);
     if (this.bonusBubble) this._drawLabel(ctx, this.bonusBubble.x, this.bonusBubble.y + this.bonusBubble.radius, this.bonusBubble.label, CONFIG.COLORS.white);
+
+    ctx.restore();
   }
 
   _drawLabel(ctx, x, y, text, color) {

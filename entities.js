@@ -12,16 +12,17 @@ function drawRoundedRect(ctx, x, y, w, h, r) {
 }
 
 class Player {
-  constructor(index, name, avatar, controls, x, groundY) {
+  constructor(index, name, controls, x, groundY, character) {
     this.index = index;
     this.name = name || `PLAYER ${index + 1}`;
-    this.avatar = avatar || CONFIG.AVATARS[index % CONFIG.AVATARS.length];
+    this.character = typeof character === 'number' ? character : index % CONFIG.CHARACTERS.length;
     this.controls = controls;
     this.w = CONFIG.PLAYER_W;
     this.h = CONFIG.PLAYER_H;
     this.x = x;
     this.y = groundY - this.h;
     this.groundY = groundY;
+    this.facing = 1; // sprites are drawn facing right
     this.color = index === 0 ? CONFIG.COLORS.cyan : CONFIG.COLORS.pink;
 
     this.alive = true;
@@ -57,17 +58,36 @@ class Player {
     this.x = Math.max(0, Math.min(CONFIG.CANVAS_W - this.w, this.x));
 
     this.moving = vx !== 0;
+    if (vx !== 0) this.facing = vx > 0 ? 1 : -1;
     if (this.moving) this.walkPhase += dt * 12;
 
+    this.shootHeld = !!inputState.shoot;
     if (inputState.shoot) {
       const now = performance.now();
       if (now - this.lastShotAt >= CONFIG.PROJECTILE_COOLDOWN_MS) {
         this.lastShotAt = now;
-        this.recoilUntil = now + 130;
+        this.recoilUntil = now + 180;
         spawnProjectileFn(this);
         this.shotsFired++;
       }
     }
+  }
+
+  // "up" while shooting (and briefly after, for the recoil), "straight" while walking
+  get pose() {
+    return this.shootHeld || performance.now() < this.recoilUntil ? 'up' : 'straight';
+  }
+
+  // Bullets leave the rifle barrel, which sits off to the character's leading side
+  // and near the top of the sprite in the shooting pose.
+  get muzzleX() {
+    const cx = this.x + this.w / 2;
+    const spriteW = Assets.characterWidth(this.character, 'up', CONFIG.PLAYER_SPRITE_H);
+    return cx + this.facing * spriteW * CONFIG.MUZZLE_X_RATIO;
+  }
+
+  get muzzleY() {
+    return this.groundY - CONFIG.PLAYER_SPRITE_H * CONFIG.MUZZLE_Y_RATIO;
   }
 
   hitByBlocker() {
@@ -91,75 +111,66 @@ class Player {
     }
 
     const cx = this.x + this.w / 2;
-    const legBob = this.moving ? Math.sin(this.walkPhase) * 3 : 0;
-    const legBob2 = this.moving ? Math.sin(this.walkPhase + Math.PI) * 3 : 0;
+    const pose = this.pose;
+    // single walking frame, so a small bob sells the stride
+    const bob = this.moving ? Math.abs(Math.sin(this.walkPhase)) * 2.5 : 0;
+    const feetY = this.groundY - bob;
+    const spriteH = CONFIG.PLAYER_SPRITE_H;
 
-    // legs
+    const drew = Assets.drawCharacter(ctx, this.character, pose, cx, feetY, spriteH, this.facing < 0);
+    if (!drew) this._drawFallbackBody(ctx, cx);
+
+    // recoil flash at the barrel right after firing
+    if (now < this.recoilUntil) {
+      ctx.globalAlpha = (this.recoilUntil - now) / 180;
+      ctx.fillStyle = CONFIG.COLORS.yellow;
+      ctx.beginPath();
+      ctx.arc(this.muzzleX, this.muzzleY, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+
+    // name tag above the sprite, never on top of it
+    ctx.save();
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
     ctx.fillStyle = this.color;
-    ctx.fillRect(cx - this.w * 0.28, this.y + this.h * 0.62 + Math.max(0, legBob), this.w * 0.2, this.h * 0.38 - Math.max(0, legBob));
-    ctx.fillRect(cx + this.w * 0.08, this.y + this.h * 0.62 + Math.max(0, legBob2), this.w * 0.2, this.h * 0.38 - Math.max(0, legBob2));
+    ctx.fillText(this.name.toUpperCase(), cx, this.groundY - spriteH - 8);
+    ctx.restore();
+  }
 
-    // torso
-    drawRoundedRect(ctx, cx - this.w * 0.38, this.y + this.h * 0.28, this.w * 0.76, this.h * 0.42, 6);
-    ctx.fill();
-
-    // chest stripe
-    ctx.fillStyle = CONFIG.COLORS.bg;
-    ctx.fillRect(cx - this.w * 0.3, this.y + this.h * 0.44, this.w * 0.6, this.h * 0.08);
-
-    // head
+  // Used only until the sprite images finish loading (or if they fail to load)
+  _drawFallbackBody(ctx, cx) {
     ctx.fillStyle = this.color;
+    ctx.fillRect(cx - this.w * 0.38, this.y + this.h * 0.28, this.w * 0.76, this.h * 0.72);
     ctx.beginPath();
     ctx.arc(cx, this.y + this.h * 0.16, this.w * 0.3, 0, Math.PI * 2);
     ctx.fill();
-    // visor
-    ctx.fillStyle = CONFIG.COLORS.bg;
-    ctx.fillRect(cx - this.w * 0.22, this.y + this.h * 0.1, this.w * 0.44, this.h * 0.11);
-    ctx.fillStyle = this.color;
-    ctx.fillRect(cx - this.w * 0.18, this.y + this.h * 0.115, this.w * 0.36, this.h * 0.08);
-
-    // blaster barrel — recoils briefly after each shot
-    const recoiling = now < this.recoilUntil;
-    const recoilAmt = recoiling ? (this.recoilUntil - now) / 130 : 0;
-    const barrelLen = this.h * 0.28 - recoilAmt * 5;
-    ctx.fillStyle = CONFIG.COLORS.white;
-    ctx.fillRect(cx - 3, this.y - barrelLen, 6, barrelLen);
-    ctx.fillStyle = this.color;
-    ctx.fillRect(cx - 5, this.y - barrelLen, 10, 5);
-
-    ctx.restore();
-
-    // avatar + name above, always outside the sprite
-    ctx.save();
-    ctx.font = '16px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = CONFIG.COLORS.white;
-    ctx.fillText(this.avatar, cx, this.y - 22);
-    ctx.font = 'bold 10px monospace';
-    ctx.fillStyle = this.color;
-    ctx.fillText(this.name.toUpperCase(), cx, this.y - 34);
-    ctx.restore();
   }
 }
 
-// Harpoon-style shot — like the real game: a rope shoots from the cannon straight up,
-// growing until it hits something or reaches the very top of the play field.
+// Contra-style plasma round — a single chunky bullet punches straight up the screen
+// leaving a fading afterimage trail behind it, instead of a static rope/line.
 class Projectile {
   constructor(x, y, ownerIndex) {
     this.x = x;
-    this.startY = y; // fixed: where the rope is anchored to the cannon
-    this.tipY = y; // moves upward each frame
+    this.y = y; // leading (top) edge of the bullet, moves upward each frame
     this.w = CONFIG.PROJECTILE_W;
     this.h = CONFIG.PROJECTILE_H;
     this.ownerIndex = ownerIndex;
     this.alive = true;
     this.color = ownerIndex === 0 ? CONFIG.COLORS.cyan : CONFIG.COLORS.pink;
+    this.trail = []; // recent y-positions for the afterimage streak
   }
 
   update(dt) {
-    this.tipY -= CONFIG.PROJECTILE_SPEED * dt;
-    if (this.tipY <= 0) {
-      this.tipY = 0;
+    this.trail.unshift(this.y);
+    if (this.trail.length > CONFIG.PROJECTILE_TRAIL_LEN) this.trail.pop();
+    this.y -= CONFIG.PROJECTILE_SPEED * dt;
+    if (this.y <= 0) {
+      this.y = 0;
       this.alive = false; // reached the very top of the field
     }
   }
@@ -167,34 +178,40 @@ class Projectile {
   draw(ctx) {
     const cx = this.x + this.w / 2;
     ctx.save();
-    // the rope: a thin bright line all the way from the cannon to the current tip
-    ctx.strokeStyle = this.color;
-    ctx.lineWidth = this.w;
-    ctx.beginPath();
-    ctx.moveTo(cx, this.startY);
-    ctx.lineTo(cx, this.tipY);
-    ctx.stroke();
-    // bright core for a little glow feel (flat color, no gradient)
-    ctx.strokeStyle = CONFIG.COLORS.white;
-    ctx.lineWidth = Math.max(1, this.w * 0.4);
-    ctx.beginPath();
-    ctx.moveTo(cx, this.startY);
-    ctx.lineTo(cx, this.tipY);
-    ctx.stroke();
-    // arrowhead tip
+
+    // afterimage trail — fading, narrowing chunks behind the bullet, not a solid line
+    for (let i = this.trail.length - 1; i >= 0; i--) {
+      const t = (i + 1) / (this.trail.length + 1);
+      ctx.globalAlpha = 0.35 * (1 - t);
+      ctx.fillStyle = this.color;
+      const segW = this.w * (1 - t * 0.5);
+      ctx.fillRect(cx - segW / 2, this.trail[i], segW, this.h * 0.6);
+    }
+    ctx.globalAlpha = 1;
+
+    // outer glow
     ctx.fillStyle = this.color;
+    ctx.globalAlpha = 0.35;
     ctx.beginPath();
-    ctx.moveTo(cx, this.tipY - 6);
-    ctx.lineTo(cx - 4, this.tipY + 4);
-    ctx.lineTo(cx + 4, this.tipY + 4);
-    ctx.closePath();
+    ctx.arc(cx, this.y + this.h * 0.4, this.w * 1.4, 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // the bullet body — a chunky pixel-block capsule, not a thin line
+    ctx.fillStyle = this.color;
+    drawRoundedRect(ctx, this.x, this.y, this.w, this.h, 2);
+    ctx.fill();
+
+    // bright hot core
+    ctx.fillStyle = CONFIG.COLORS.white;
+    drawRoundedRect(ctx, this.x + this.w * 0.2, this.y + this.h * 0.1, this.w * 0.6, this.h * 0.55, 2);
+    ctx.fill();
+
     ctx.restore();
   }
 
   get bounds() {
-    // only the tip is the "business end" that can hit something
-    return { x: this.x, y: this.tipY - 4, w: this.w, h: 8 };
+    return { x: this.x, y: this.y, w: this.w, h: this.h };
   }
 }
 
@@ -230,15 +247,12 @@ class Blocker {
     this.speedMultiplier = speedMultiplier || 1;
     this.alive = true;
     this.color = tier === 0 ? CONFIG.COLORS.pink : tier === 1 ? CONFIG.COLORS.yellow : CONFIG.COLORS.cyan;
-    this.spin = (Math.random() - 0.5) * 1.4;
-    this.angle = Math.random() * Math.PI * 2;
   }
 
   update(dt) {
     this.vy += CONFIG.GRAVITY * dt;
     this.x += this.vx * dt;
     this.y += this.vy * dt;
-    this.angle += this.spin * dt;
 
     // wall bounce
     if (this.x - this.radius < 0) {
@@ -279,17 +293,13 @@ class Blocker {
     ctx.arc(this.x, this.y, this.radius * 0.72, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.rotate(this.angle);
-    const iconColor = this.tier === 0 ? CONFIG.COLORS.pink : this.tier === 1 ? CONFIG.COLORS.yellow : CONFIG.COLORS.cyan;
+    // logo stays upright — it reads as the brand mark, not a spinning game token
     if (Assets.ready) {
       const key = this.tier === 0 ? 'pink' : this.tier === 1 ? 'yellow' : 'cyan';
-      Assets.draw(ctx, key, 0, 0, this.radius * 1.15);
+      Assets.draw(ctx, key, this.x, this.y, this.radius * 1.15);
     } else {
-      BLOCKER_FALLBACK_ICON(ctx, 0, 0, this.radius, iconColor);
+      BLOCKER_FALLBACK_ICON(ctx, this.x, this.y, this.radius, this.color);
     }
-    ctx.restore();
 
     ctx.restore();
   }
@@ -381,7 +391,6 @@ class BonusBubble {
     this.label = 'BONUS';
     this.alive = true;
     this.life = CONFIG.BONUS_BUBBLE_LIFETIME_MS;
-    this.angle = 0;
   }
 
   update(dt) {
@@ -393,7 +402,6 @@ class BonusBubble {
     this.vy += CONFIG.GRAVITY * 0.6 * dt;
     this.x += this.vx * dt;
     this.y += this.vy * dt;
-    this.angle += dt * 2;
 
     if (this.x - this.radius < 0) {
       this.x = this.radius;
@@ -426,15 +434,11 @@ class BonusBubble {
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius * pulse * 0.72, 0, Math.PI * 2);
     ctx.fill();
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.rotate(Math.sin(this.angle) * 0.3);
     if (Assets.ready) {
-      Assets.draw(ctx, 'white', 0, 0, this.radius * 1.2 * pulse);
+      Assets.draw(ctx, 'white', this.x, this.y, this.radius * 1.2 * pulse);
     } else {
-      BLOCKER_FALLBACK_ICON(ctx, 0, 0, this.radius, CONFIG.COLORS.white);
+      BLOCKER_FALLBACK_ICON(ctx, this.x, this.y, this.radius, CONFIG.COLORS.white);
     }
-    ctx.restore();
     ctx.restore();
   }
 
