@@ -55,9 +55,11 @@ const CONFIG = {
   },
 
   GRAVITY: 620, // px/sec^2 for blocker bounce
-  // Blockers are kept up at the player's head line rather than dipping below it,
-  // so the play field reads higher and there is always room to shoot underneath.
-  BLOCKER_FLOOR_MARGIN: 0,
+  // How far a blocker's lowest point reaches past the player's head line. This has to
+  // stay positive: the overlap test is a strict "<", so a blocker that merely grazes the
+  // top of the hitbox never registers a hit and the player becomes invincible.
+  // Bubbles read high because of the bounce apex below, not because of this line.
+  BLOCKER_FLOOR_MARGIN: 30,
 
   BUBBLE_SPEED_PRESETS: { slow: 0.72, normal: 1, fast: 1.4 },
 

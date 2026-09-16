@@ -1,10 +1,23 @@
 :root {
+  /* Personio retro arcade palette — the chrome across every screen */
+  --pt-bg: #0B0820;
+  --pt-bg2: #1F1A3A;
+  --pt-purple: #7B2CBF;
+  --pt-purple2: #9D4EDD;
+  --pt-blue: #0077FE;
+  --pt-gold: #C8963E;
+  --pt-white: #FFFFFF;
+  --pt-slate: #1E222D;
+
+  /* neon set used by the play field itself, kept legible against the city art */
   --bg: #120A2A;
   --cyan: #20D6D2;
   --yellow: #FFD23F;
   --pink: #FF3B9D;
   --white: #F5F1E8;
+
   --pixel-font: 'Press Start 2P', 'Courier New', Courier, monospace;
+  --body-font: 'VT323', 'Courier New', Courier, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -12,12 +25,22 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
-  color: var(--white);
-  font-family: 'Courier New', Courier, monospace;
+  background: var(--pt-bg);
+  color: var(--pt-white);
+  font-family: var(--body-font);
+  font-size: 17px; /* VT323 runs small, so the base is bumped for readability */
   height: 100%;
   overflow-x: hidden;
   image-rendering: pixelated;
+}
+
+/* faint pixel grid behind everything */
+body {
+  position: relative;
+  background-image:
+    linear-gradient(rgba(31, 26, 58, 0.6) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31, 26, 58, 0.6) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 #app {
@@ -71,6 +94,17 @@ html, body {
 
 .screen.active {
   display: flex;
+}
+
+/* Gold-framed arcade panel chrome, shared by every screen that isn't full-bleed */
+#screen-setup,
+#screen-how,
+#screen-scorecard,
+#screen-highscores {
+  background: var(--pt-bg);
+  border: 3px solid var(--pt-gold);
+  box-shadow: 0 0 0 3px var(--pt-bg), 0 0 30px rgba(123, 44, 191, 0.3);
+  padding: 28px 24px;
 }
 
 /* ---------- Intro / attract mode ---------- */
@@ -137,13 +171,13 @@ html, body {
   letter-spacing: 1px;
   line-height: 1.6;
   padding: 14px 22px;
-  background: var(--bg);
-  color: var(--cyan);
-  border: 3px solid var(--cyan);
+  background: var(--pt-slate);
+  color: var(--pt-white);
+  border: 3px solid var(--pt-gold);
   cursor: pointer;
   text-transform: uppercase;
-  box-shadow: 4px 4px 0 var(--cyan);
-  transition: transform 0.05s ease;
+  box-shadow: 4px 4px 0 var(--pt-gold);
+  transition: transform 0.05s ease, color 0.1s ease, border-color 0.1s ease;
   clip-path: polygon(
     0 6px, 6px 6px, 6px 0, calc(100% - 6px) 0, calc(100% - 6px) 6px, 100% 6px,
     100% calc(100% - 6px), calc(100% - 6px) calc(100% - 6px), calc(100% - 6px) 100%,
@@ -151,24 +185,25 @@ html, body {
   );
 }
 .btn:hover {
-  background: var(--cyan);
-  color: var(--bg);
+  color: var(--pt-blue);
+  border-color: var(--pt-blue);
+  box-shadow: 4px 4px 0 var(--pt-blue);
 }
 .btn:active {
   transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0 var(--cyan);
+  box-shadow: 2px 2px 0 var(--pt-blue);
 }
 .btn-primary {
-  color: var(--yellow);
-  border-color: var(--yellow);
-  box-shadow: 4px 4px 0 var(--yellow);
+  border-color: var(--pt-purple2);
+  box-shadow: 4px 4px 0 var(--pt-purple2);
 }
 .btn-primary:hover {
-  background: var(--yellow);
-  color: var(--bg);
+  color: var(--pt-blue);
+  border-color: var(--pt-blue);
+  box-shadow: 4px 4px 0 var(--pt-blue);
 }
 .btn-primary:active {
-  box-shadow: 2px 2px 0 var(--yellow);
+  box-shadow: 2px 2px 0 var(--pt-blue);
 }
 
 .menu {
@@ -193,16 +228,17 @@ html, body {
 }
 .game-title {
   font-family: var(--pixel-font);
-  font-size: 40px;
+  font-size: clamp(26px, 5vw, 44px);
   line-height: 1.4;
   margin: 0;
-  color: var(--yellow);
-  text-shadow: 4px 4px 0 var(--pink), 8px 8px 0 rgba(0,0,0,0.4);
+  color: var(--pt-white);
+  -webkit-text-stroke: 2px var(--pt-purple2);
+  text-shadow: 3px 3px 0 var(--pt-purple), 0 0 18px var(--pt-purple2);
   letter-spacing: 2px;
 }
 .tagline {
   font-family: var(--pixel-font);
-  color: var(--cyan);
+  color: var(--pt-blue);
   font-size: 11px;
   margin-top: 18px;
   letter-spacing: 1px;
@@ -225,22 +261,22 @@ html, body {
 .option-label {
   font-family: var(--pixel-font);
   font-size: 9px;
-  color: var(--pink);
+  color: var(--pt-gold);
   letter-spacing: 1px;
 }
 .toggle-row {
   display: flex;
   gap: 0;
-  border: 2px solid var(--cyan);
+  border: 2px solid var(--pt-gold);
 }
 .btn-toggle {
   font-family: var(--pixel-font);
   font-size: 9px;
   padding: 10px 12px;
-  background: var(--bg);
-  color: var(--cyan);
+  background: var(--pt-slate);
+  color: var(--pt-white);
   border: none;
-  border-right: 2px solid var(--cyan);
+  border-right: 2px solid var(--pt-gold);
   cursor: pointer;
   letter-spacing: 0.5px;
 }
@@ -248,19 +284,21 @@ html, body {
   border-right: none;
 }
 .btn-toggle.active {
-  background: var(--cyan);
-  color: var(--bg);
+  background: var(--pt-blue);
+  color: var(--pt-white);
 }
 
 /* ---------- Screen titles ---------- */
 .screen-title {
   font-family: var(--pixel-font);
-  font-size: 22px;
+  font-size: clamp(14px, 2.4vw, 22px);
   line-height: 1.6;
-  color: var(--yellow);
+  color: var(--pt-white);
   letter-spacing: 2px;
-  text-shadow: 3px 3px 0 var(--pink);
-  margin-bottom: 8px;
+  -webkit-text-stroke: 1.5px var(--pt-purple2);
+  text-shadow: 2px 2px 0 var(--pt-purple), 0 0 12px var(--pt-purple2);
+  margin-bottom: 16px;
+  text-align: center;
 }
 
 /* ---------- Pixel-corner panel chrome (shared 8-bit "stair-step" border look) ---------- */
@@ -285,10 +323,10 @@ html, body {
   width: 100%;
 }
 .setup-player {
-  border: 3px solid var(--cyan);
+  border: 3px solid var(--pt-purple2);
   padding: 16px;
   width: 280px;
-  background: rgba(32, 214, 210, 0.05);
+  background: var(--pt-slate);
 }
 .setup-player-disabled {
   opacity: 0.35;
@@ -297,7 +335,7 @@ html, body {
 .setup-player h3 {
   font-family: var(--pixel-font);
   font-size: 13px;
-  color: var(--pink);
+  color: var(--pt-gold);
   margin-top: 0;
   letter-spacing: 1px;
 }
@@ -305,17 +343,18 @@ html, body {
   width: 100%;
   padding: 8px;
   font-family: inherit;
-  background: var(--bg);
-  color: var(--white);
-  border: 2px solid var(--white);
+  background: var(--pt-bg);
+  color: var(--pt-white);
+  border: 2px solid var(--pt-gold);
   margin-bottom: 12px;
+  font-size: 18px;
   text-transform: uppercase;
 }
 .setup-section-label {
   display: block;
   font-family: var(--pixel-font);
   font-size: 9px;
-  color: var(--pink);
+  color: var(--pt-gold);
   letter-spacing: 1px;
   margin-bottom: 8px;
 }
@@ -331,8 +370,8 @@ html, body {
   align-items: center;
   gap: 4px;
   padding: 6px 2px;
-  background: var(--bg);
-  border: 2px solid rgba(245, 241, 232, 0.35);
+  background: var(--pt-bg);
+  border: 2px solid rgba(157, 78, 221, 0.5);
   cursor: pointer;
 }
 .character-btn img {
@@ -348,10 +387,10 @@ html, body {
   letter-spacing: 0.5px;
 }
 .character-btn:hover {
-  border-color: var(--cyan);
+  border-color: var(--pt-blue);
 }
 .character-btn.selected {
-  border-color: var(--yellow);
+  border-color: var(--pt-gold);
   background: rgba(255, 210, 63, 0.18);
 }
 .controls-remap {
@@ -363,21 +402,21 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: 16px;
 }
 .remap-btn {
   font-family: var(--pixel-font);
-  background: var(--bg);
-  color: var(--cyan);
-  border: 2px solid var(--cyan);
+  background: var(--pt-slate);
+  color: var(--pt-white);
+  border: 2px solid var(--pt-gold);
   padding: 6px 10px;
   cursor: pointer;
   font-size: 9px;
   min-width: 100px;
 }
 .remap-btn:hover {
-  background: var(--cyan);
-  color: var(--bg);
+  border-color: var(--pt-blue);
+  color: var(--pt-blue);
 }
 
 /* ---------- How to play ---------- */
@@ -389,7 +428,8 @@ html, body {
   display: flex;
   align-items: center;
   gap: 20px;
-  border: 2px solid var(--cyan);
+  border: 2px solid var(--pt-purple2);
+  background: var(--pt-slate);
   padding: 14px 20px;
   margin-bottom: 14px;
 }
@@ -398,8 +438,8 @@ html, body {
   white-space: nowrap;
 }
 .how-text {
-  font-size: 20px;
-  color: var(--white);
+  font-size: 19px;
+  color: var(--pt-white);
   letter-spacing: 0.5px;
   line-height: 1.3;
 }
@@ -413,20 +453,21 @@ html, body {
   justify-content: center;
 }
 .how-controls-card {
-  border: 2px solid var(--pink);
+  border: 2px solid var(--pt-gold);
+  background: var(--pt-slate);
   padding: 12px 20px;
   text-align: center;
 }
 .how-controls-card strong {
-  color: var(--pink);
+  color: var(--pt-gold);
   font-size: 16px;
   display: block;
   margin-bottom: 6px;
 }
 .how-controls-card p {
-  font-size: 16px;
+  font-size: 17px;
   margin: 0;
-  color: var(--white);
+  color: var(--pt-white);
 }
 
 /* ---------- Game screen ---------- */
@@ -448,18 +489,18 @@ html, body {
 .hud-mrr {
   font-family: var(--pixel-font);
   font-size: 11px;
-  color: var(--yellow);
+  color: var(--pt-gold);
   letter-spacing: 1px;
 }
 .hud-mrr-bar {
   width: 220px;
   height: 10px;
-  border: 2px solid var(--yellow);
+  border: 2px solid var(--pt-gold);
   margin-top: 4px;
 }
 .hud-mrr-bar-fill {
   height: 100%;
-  background: var(--yellow);
+  background: var(--pt-gold);
   width: 0%;
   transition: width 0.15s ease;
 }
@@ -483,7 +524,7 @@ html, body {
 }
 .hud-timer {
   font-family: var(--pixel-font);
-  color: var(--cyan);
+  color: var(--pt-blue);
   font-size: 13px;
   letter-spacing: 1px;
 }
@@ -492,8 +533,8 @@ html, body {
   animation: pulse 0.5s infinite;
 }
 .hud-blockers {
-  color: var(--white);
-  font-size: 12px;
+  color: var(--pt-white);
+  font-size: 15px;
   margin-top: 2px;
 }
 .hud-right {
@@ -546,15 +587,15 @@ html, body {
   max-width: 100%;
   margin-bottom: 8px;
   padding: 8px 12px;
-  border: 2px solid rgba(32, 214, 210, 0.45);
-  background: rgba(18, 10, 42, 0.75);
-  font-size: 11px;
-  color: var(--white);
+  border: 2px solid var(--pt-gold);
+  background: var(--pt-slate);
+  font-size: 16px;
+  color: var(--pt-white);
 }
 .legend-title {
   font-family: var(--pixel-font);
-  font-size: 8px;
-  color: var(--yellow);
+  font-size: 9px;
+  color: var(--pt-gold);
   letter-spacing: 1px;
 }
 .legend-item {
@@ -601,7 +642,7 @@ html, body {
 
 #game-canvas {
   background: var(--bg);
-  border: 3px solid var(--cyan);
+  border: 3px solid var(--pt-gold);
   width: 960px;
   max-width: 100%;
   height: auto;
@@ -614,9 +655,9 @@ html, body {
   right: -46px;
   font-family: inherit;
   font-size: 16px;
-  background: var(--bg);
-  color: var(--yellow);
-  border: 2px solid var(--yellow);
+  background: var(--pt-slate);
+  color: var(--pt-gold);
+  border: 2px solid var(--pt-gold);
   padding: 8px 12px;
   cursor: pointer;
   line-height: 1;
@@ -628,8 +669,8 @@ html, body {
   }
 }
 .btn-pause:hover {
-  background: var(--yellow);
-  color: var(--bg);
+  color: var(--pt-blue);
+  border-color: var(--pt-blue);
 }
 
 .btn-fullscreen-toggle {
@@ -638,17 +679,17 @@ html, body {
   right: -46px;
   font-family: inherit;
   font-size: 18px;
-  background: var(--bg);
-  color: var(--cyan);
-  border: 2px solid var(--cyan);
+  background: var(--pt-slate);
+  color: var(--pt-gold);
+  border: 2px solid var(--pt-gold);
   padding: 6px 11px;
   cursor: pointer;
   line-height: 1;
   z-index: 6;
 }
 .btn-fullscreen-toggle:hover {
-  background: var(--cyan);
-  color: var(--bg);
+  color: var(--pt-blue);
+  border-color: var(--pt-blue);
 }
 @media (max-width: 1040px) {
   .btn-fullscreen-toggle {
@@ -669,7 +710,7 @@ html, body {
 .pause-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(18, 10, 42, 0.88);
+  background: rgba(11, 8, 32, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -685,17 +726,18 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  border: 3px solid var(--yellow);
+  border: 3px solid var(--pt-gold);
   padding: 32px 40px;
-  background: var(--bg);
+  background: var(--pt-bg);
 }
 .pause-box h2 {
   font-family: var(--pixel-font);
   font-size: 22px;
-  color: var(--yellow);
+  color: var(--pt-white);
   letter-spacing: 3px;
   margin: 0;
-  text-shadow: 3px 3px 0 var(--pink);
+  -webkit-text-stroke: 1.5px var(--pt-purple2);
+  text-shadow: 2px 2px 0 var(--pt-purple);
 }
 .pause-box .btn {
   width: 220px;
@@ -707,10 +749,11 @@ html, body {
   left: 50%;
   transform: translate(-50%, -50%) scale(0.8);
   font-family: var(--pixel-font);
-  color: var(--yellow);
+  color: var(--pt-white);
   font-size: 18px;
   letter-spacing: 2px;
-  text-shadow: 3px 3px 0 var(--pink);
+  -webkit-text-stroke: 1.5px var(--pt-purple2);
+  text-shadow: 2px 2px 0 var(--pt-purple);
   opacity: 0;
   pointer-events: none;
   white-space: nowrap;
@@ -735,7 +778,8 @@ html, body {
   margin-bottom: 20px;
 }
 .sc-stat {
-  border: 2px solid var(--cyan);
+  border: 2px solid var(--pt-gold);
+  background: var(--pt-slate);
   padding: 10px 16px;
   display: flex;
   flex-direction: column;
@@ -743,13 +787,13 @@ html, body {
   min-width: 140px;
 }
 .sc-label {
-  font-size: 10px;
-  color: var(--cyan);
+  font-size: 15px;
+  color: var(--pt-blue);
   letter-spacing: 1px;
 }
 .sc-value {
-  font-size: 20px;
-  color: var(--white);
+  font-size: 22px;
+  color: var(--pt-white);
   margin-top: 4px;
 }
 .scorecard-players {
@@ -759,15 +803,16 @@ html, body {
   justify-content: center;
 }
 .sc-player-card {
-  border: 3px solid var(--pink);
+  border: 3px solid var(--pt-purple2);
+  background: var(--pt-slate);
   padding: 14px;
   width: 240px;
-  font-size: 12px;
+  font-size: 16px;
   line-height: 1.8;
 }
 .sc-player-head {
-  font-size: 16px;
-  color: var(--yellow);
+  font-size: 18px;
+  color: var(--pt-gold);
   margin-bottom: 8px;
   display: flex;
   gap: 8px;
@@ -786,30 +831,30 @@ html, body {
   display: flex;
   gap: 16px;
   align-items: center;
-  border-bottom: 2px solid rgba(32, 214, 210, 0.3);
+  border-bottom: 2px solid rgba(200, 150, 62, 0.3);
   padding: 8px 4px;
-  font-size: 13px;
+  font-size: 16px;
   flex-wrap: wrap;
 }
 .hs-rank {
-  color: var(--yellow);
+  color: var(--pt-gold);
   width: 32px;
 }
 .hs-names {
   flex: 1;
   min-width: 160px;
-  color: var(--white);
+  color: var(--pt-white);
 }
 .hs-mrr {
-  color: var(--cyan);
+  color: var(--pt-blue);
   width: 100px;
 }
 .hs-detail {
-  color: var(--pink);
-  font-size: 11px;
+  color: var(--pt-purple2);
+  font-size: 14px;
 }
 .hs-empty {
-  color: var(--cyan);
+  color: var(--pt-blue);
 }
 
 @media (max-width: 600px) {
@@ -822,7 +867,7 @@ html, body {
 .how-num {
   font-family: var(--pixel-font);
   font-size: 16px;
-  color: var(--yellow);
+  color: var(--pt-gold);
   min-width: 34px;
   text-align: center;
   flex: none;
@@ -830,6 +875,7 @@ html, body {
 .sc-stat-total {
   border-color: var(--yellow);
   border-width: 3px;
+  background: rgba(255, 210, 63, 0.1);
 }
 .sc-stat-total .sc-label { color: var(--yellow); }
 .sc-stat-total .sc-value { font-size: 26px; color: var(--yellow); }

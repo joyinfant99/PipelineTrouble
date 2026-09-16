@@ -474,35 +474,39 @@ class Game {
     for (const proj of this.projectiles) proj.draw(ctx);
     for (const p of this.players) p.draw(ctx);
 
-    // labels drawn last, outside/below each ball, so they stay crisp and readable
-    // above every other layer no matter how small the ball has shrunk.
-    for (const b of this.blockers) this._drawLabel(ctx, b.x, b.y + b.radius, b.label, b.color);
-    if (this.bonusBubble) this._drawLabel(ctx, this.bonusBubble.x, this.bonusBubble.y + this.bonusBubble.radius, this.bonusBubble.label, CONFIG.COLORS.white);
+    // labels drawn last, sitting above each ball so they stay crisp and readable
+    // over every other layer no matter how small the ball has shrunk
+    for (const b of this.blockers) this._drawLabel(ctx, b.x, b.y - b.radius, b.label, b.color);
+    if (this.bonusBubble) this._drawLabel(ctx, this.bonusBubble.x, this.bonusBubble.y - this.bonusBubble.radius, this.bonusBubble.label, this.bonusBubble.color);
 
     ctx.restore();
   }
 
+  // `y` is the top edge of the bubble — the tag sits just above it, clamped so it
+  // never runs off the top of the field or past the side walls
   _drawLabel(ctx, x, y, text, color) {
     ctx.save();
-    ctx.font = 'bold 10px monospace';
+    ctx.font = 'bold 15px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    const labelY = Math.min(y + 8, CONFIG.CANVAS_H - 14);
-    const padX = 5;
+    const padX = 8;
+    const h = 21;
     const w = ctx.measureText(text).width + padX * 2;
-    const h = 13;
+    const labelY = Math.max(2, y - h - 8);
     const cx = Math.min(CONFIG.CANVAS_W - w / 2 - 2, Math.max(w / 2 + 2, x));
-    ctx.globalAlpha = 0.88;
+
+    ctx.globalAlpha = 0.92;
     ctx.fillStyle = CONFIG.COLORS.bg;
     drawRoundedRect(ctx, cx - w / 2, labelY, w, h, 3);
     ctx.fill();
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     drawRoundedRect(ctx, cx - w / 2, labelY, w, h, 3);
     ctx.stroke();
+
     ctx.globalAlpha = 1;
     ctx.fillStyle = color;
-    ctx.fillText(text, cx, labelY + 2);
+    ctx.fillText(text, cx, labelY + 3);
     ctx.restore();
   }
 }
