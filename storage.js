@@ -75,6 +75,15 @@ const StorageManager = {
     StorageManager.set(CONFIG.STORAGE_KEYS.fullscreen, enabled);
   },
 
+  _supabase: null,
+
+  getSupabaseClient() {
+    if (StorageManager._supabase) return StorageManager._supabase;
+    if (typeof supabase === 'undefined' || !CONFIG.SUPABASE_URL) return null;
+    StorageManager._supabase = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    return StorageManager._supabase;
+  },
+
   getHighscores() {
     return StorageManager.get(CONFIG.STORAGE_KEYS.highscores, []);
   },
@@ -82,9 +91,53 @@ const StorageManager = {
   saveHighscore(entry) {
     const list = StorageManager.getHighscores();
     list.push(entry);
-    list.sort((a, b) => b.mrr - a.mrr);
+    list.sort((a, b) => b.score - a.score);
     const trimmed = list.slice(0, CONFIG.MAX_HIGHSCORES);
     StorageManager.set(CONFIG.STORAGE_KEYS.highscores, trimmed);
     return trimmed;
+  },
+
+  // Shared scoreboard, backed by Supabase, falling back to the local list above
+  // (offline, or Supabase not configured) so the game always works. TOTAL SCORE
+  // already folds in every end-of-round bonus, so ranking by it server-side
+  // matches the leaderboard shown in the UI.
+  async fetchSharedHighscores() {
+    const client = StorageManager.getSupabaseClient();
+    if (!client) return StorageManager.getHighscores();
+    const { data, error } = await client
+      .from('highscores')
+      .select('players, mrr, blockers_removed, time_remaining, won, created_at')
+      .order('mrr', { ascending: false })
+      .limit(CONFIG.MAX_HIGHSCORES);
+    if (error) {
+      console.warn('Supabase fetchSharedHighscores failed, using local list', error);
+      return StorageManager.getHighscores();
+    }
+    // the shared table's `mrr` column is the score total under its original name
+    return data.map((row) => ({
+      players: row.players,
+      score: row.mrr,
+      blockersRemoved: row.blockers_removed,
+      timeRemaining: row.time_remaining,
+      won: row.won,
+      date: row.created_at,
+    }));
+  },
+
+  async saveSharedHighscore(entry) {
+    // keep the local copy as an instant fallback regardless of network state
+    StorageManager.saveHighscore(entry);
+    const client = StorageManager.getSupabaseClient();
+    if (!client) return;
+    const { error } = await client.from('highscores').insert({
+      players: entry.players,
+      mrr: entry.score,
+      blockers_removed: entry.blockersRemoved,
+      time_remaining: entry.timeRemaining,
+      won: entry.won,
+    });
+    if (error) {
+      console.warn('Supabase saveSharedHighscore failed', error);
+    }
   },
 };

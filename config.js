@@ -13,8 +13,7 @@ const CONFIG = {
   PLAYER_H: 66,
   PLAYER_SPRITE_H: 108, // drawn sprite height on canvas
   PLAYER_HIT_PENALTY: 2500, // euros pipeline lost
-  PLAYER_RESPAWN_MS: 1500,
-  PLAYER_INVULN_MS: 1500, // matches respawn, flashes during this
+  PLAYER_INVULN_MS: 1500, // brief grace window after a hit — player stays fully controllable, just faded
 
   PROJECTILE_SPEED: 1100, // px/sec upward — a fast, punchy round
   PROJECTILE_COOLDOWN_MS: 220, // minimum gap between shots — one powerful round at a time
@@ -23,56 +22,61 @@ const CONFIG = {
   PROJECTILE_TRAIL_LEN: 7, // afterimage segments behind the bullet
   MAX_PROJECTILES_PER_PLAYER: 1, // one shot in flight at a time, classic Bubble Trouble rule
 
-  // Difficulty presets — selected on the start screen, drives lives/pace/stakes
+  // Difficulty presets — selected on the start screen. Every difficulty gives each
+  // player the same 5 lives; the challenge comes from pace, speed, target and penalty.
   DIFFICULTY_PRESETS: {
     easy: {
       label: 'EASY',
-      livesMax: 4,
-      spawnIntervalMs: 8500,
+      livesMax: 5,
+      spawnIntervalMs: 15000,
       roundDuration: 75,
       blockerSpeedMult: 0.8,
       hitPenalty: 1500,
-      targetMrr: 75000,
+      targetScore: 75000,
     },
     normal: {
       label: 'NORMAL',
-      livesMax: 3,
-      spawnIntervalMs: 7000,
+      livesMax: 5,
+      spawnIntervalMs: 13000,
       roundDuration: 60,
       blockerSpeedMult: 1,
       hitPenalty: 2500,
-      targetMrr: 100000,
+      targetScore: 100000,
     },
     pro: {
       label: 'PRO',
-      livesMax: 2,
-      spawnIntervalMs: 4800,
+      livesMax: 5,
+      spawnIntervalMs: 9000,
       roundDuration: 55,
       blockerSpeedMult: 1.4,
       hitPenalty: 4000,
-      targetMrr: 140000,
+      targetScore: 140000,
     },
   },
 
   GRAVITY: 620, // px/sec^2 for blocker bounce
-  BLOCKER_FLOOR_MARGIN: 20, // px the lowest point of a blocker may dip below the player's head line
+  // Blockers are kept up at the player's head line rather than dipping below it,
+  // so the play field reads higher and there is always room to shoot underneath.
+  BLOCKER_FLOOR_MARGIN: 0,
 
   BUBBLE_SPEED_PRESETS: { slow: 0.72, normal: 1, fast: 1.4 },
 
-  // Blocker tiers: size 0 = STALLED DEAL (largest), 1 = mid split, 2 = smallest
+  // Blocker tiers: size 0 = STALLED DEAL (largest), 1 = mid split, 2 = smallest.
+  // bounceHeight — like the original, each size always rebounds to the same apex
+  // above the floor line. Capped at (floor - 2 * radius) so nothing clips the ceiling.
   BLOCKER_TIERS: [
-    { radius: 46, speed: 120, mrr: 0, label: 'STALLED DEAL' },
-    { radius: 30, speed: 170, mrr: 0, label: 'SPLIT' },
-    { radius: 18, speed: 230, mrr: 0, label: 'BLOCKER' },
+    { radius: 46, speed: 120, mrr: 0, label: 'STALLED DEAL', bounceHeight: 405 },
+    { radius: 30, speed: 170, mrr: 0, label: 'SPLIT', bounceHeight: 385 },
+    { radius: 18, speed: 230, mrr: 0, label: 'BLOCKER', bounceHeight: 335 },
   ],
 
-  DEAL_MRR_VALUE: 12500, // MRR awarded per fully-cleared deal
+  DEAL_MRR_VALUE: 12500, // points awarded per fully-cleared deal
 
   MID_LABELS: ['LEGAL', 'PROCUREMENT'],
   SMALL_LABELS: ['SECURITY REVIEW', 'BAD DATA', 'NO CHAMPION', 'GHOSTED'],
 
-  SPAWN_INTERVAL_MS: 7000, // new deal spawns if under max concurrent deals
-  MAX_CONCURRENT_DEALS: 3,
+  SPAWN_INTERVAL_MS: 13000, // new deal spawns if under max concurrent deals
+  MAX_CONCURRENT_DEALS: 2,
 
   // Playable characters. Each has a walking pose ("straight") and a shooting pose ("up").
   // Filenames are referenced exactly as they sit on disk (casing and spaces included) —
@@ -132,17 +136,41 @@ const CONFIG = {
     musicVolumeDucked: 0.12, // pulled right down while the narrator is speaking
   },
 
-  // Lives — shared team pool
-  STARTING_LIVES: 3,
-  MAX_LIVES: 3,
+  // Lives — each player carries their own pool; the round ends when everyone is out
+  STARTING_LIVES: 5,
+  MAX_LIVES: 5,
 
-  // Bonus bubble — Personio-logo bubble, captures for +1 life or bonus MRR at max lives
-  BONUS_BUBBLE_MIN_MS: 9000,
-  BONUS_BUBBLE_MAX_MS: 16000,
+  // Everything the players do carries a weight, so a round spent only popping
+  // blockers still puts points on the board. Player-attributed weights are credited
+  // to whoever earned them, which is what makes TOTAL SCORE reconcile exactly with
+  // the per-player contributions shown underneath it on the scorecard.
+  SCORE_WEIGHTS: {
+    blockerByTier: [150, 250, 400], // smaller blockers are harder to hit, so worth more
+    dealCleared: 12500, // popping the last piece of a deal
+    cashBonus: 4000, // '+MRR' pickup
+    lifeBonusAtMax: 5000, // 'BONUS' pickup when already at full lives
+    // team-level, awarded at the close and shown as their own scorecard rows
+    timePerSec: 200, // win only — per second left on the clock
+    perLifeLeft: 3000, // per life still held across all players
+    win: 10000, // flat bonus for hitting the target
+  },
+
+  // Bonus bubbles — periodic pickups. Every kind either scores directly or helps
+  // you score more (extra life to stay in, rapid fire / shield to clear deals faster).
+  BONUS_BUBBLE_MIN_MS: 7000,
+  BONUS_BUBBLE_MAX_MS: 13000,
   BONUS_BUBBLE_RADIUS: 24,
   BONUS_BUBBLE_LIFETIME_MS: 6500,
   BONUS_BUBBLE_SPEED: 150,
-  BONUS_MRR_AT_MAX_LIVES: 5000,
+  RAPID_FIRE_DURATION_MS: 8000,
+  SHIELD_DURATION_MS: 6000,
+
+  BONUS_KINDS: [
+    { key: 'life', label: 'BONUS', color: 'white', weight: 3 },
+    { key: 'cash', label: '+POINTS', color: 'yellow', weight: 4 },
+    { key: 'rapid', label: 'RAPID FIRE', color: 'orange', weight: 3 },
+    { key: 'shield', label: 'SHIELD', color: 'green', weight: 3 },
+  ],
 
   // Particle burst on blocker destruction
   PARTICLE_COUNT: 16,
@@ -159,17 +187,22 @@ const CONFIG = {
     yellow: '#FFD23F',
     pink: '#FF3B9D',
     white: '#F5F1E8',
+    orange: '#FF8C42',
+    green: '#3DDC84',
   },
 
   DEFAULT_CONTROLS: [
-    { left: 'a', right: 'd', shoot: ' ', shootAlt: 'w' },
-    { left: 'arrowleft', right: 'arrowright', shoot: 'enter', shootAlt: 'arrowup' },
+    { left: 'arrowleft', right: 'arrowright', shoot: 'arrowup' },
+    { left: 'a', right: 'd', shoot: 'w' },
   ],
 
+  SUPABASE_URL: 'https://fllujguqlnwwrgcbkoej.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_wwBAgok47zqVmuc7igveeQ_s9jO90HA',
+
   STORAGE_KEYS: {
-    players: 'pt_players_v1',
+    players: 'pt_players_v2', // v2: arrows/WASD defaults, character instead of emoji avatar
     sound: 'pt_sound_v1',
-    highscores: 'pt_highscores_v1',
+    highscores: 'pt_highscores_v2', // v2: weighted score replaced raw MRR, old entries aren't comparable
     mode: 'pt_mode_v2', // v2: default flipped to single player
     bubbleSpeed: 'pt_bubble_speed_v1',
     difficulty: 'pt_difficulty_v1',

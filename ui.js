@@ -345,14 +345,30 @@ const UI = {
         const action = remapBtn.dataset.action;
         remapBtn.textContent = this._keyLabel(cfg.controls[action]);
         remapBtn.onclick = () => {
+          const prevKey = cfg.controls[action];
           remapBtn.textContent = 'PRESS A KEY...';
           InputManager.captureNextKey((key) => {
+            if (this._isKeyTaken(key, idx, action)) {
+              remapBtn.textContent = 'ALREADY USED';
+              setTimeout(() => {
+                remapBtn.textContent = this._keyLabel(prevKey);
+              }, 1000);
+              return;
+            }
             cfg.controls[action] = key;
             remapBtn.textContent = this._keyLabel(key);
           });
         };
       });
     });
+  },
+
+  // true if `key` is already bound to some other control (any action, either
+  // player) besides the one being remapped, keeping both players on disjoint keys
+  _isKeyTaken(key, playerIdx, action) {
+    return this.playersConfig.some((cfg, idx) =>
+      Object.entries(cfg.controls).some(([a, k]) => k === key && !(idx === playerIdx && a === action))
+    );
   },
 
   _keyLabel(key) {
@@ -395,7 +411,7 @@ const UI = {
         onTick: (state) => this._updateHud(state),
         onPlayerHit: (player) => this._flashPlayerHud(player),
         onDealReaccelerated: () => this._showBanner('DEAL REACCELERATED', CONFIG.COLORS.yellow),
-        onLivesChanged: (lives) => this._renderLives(lives),
+        onLivesChanged: (players) => this._renderLives(players),
         onBonusCaptured: (text) => this._showBanner(text, CONFIG.COLORS.cyan),
         onEnd: (payload) => this._onGameEnd(payload),
       },
@@ -406,43 +422,30 @@ const UI = {
       }
     );
 
-    document.getElementById('hud-mrr-target').textContent = `€${this.currentGame.difficultyPreset.targetMrr.toLocaleString()}`;
+    document.getElementById('hud-mrr-target').textContent = this.currentGame.difficultyPreset.targetScore.toLocaleString();
 
     this._buildHudPlayers();
-    this._renderLives(this.currentGame.lives, this.currentGame.maxLives);
+    this._renderLives(this.currentGame.players);
     this.currentGame.start();
 
     if (StorageManager.getFullscreen()) this.requestFullscreen();
     AudioManager.startMusic();
   },
 
-  _renderLives(lives, maxLives) {
-    const canvas = document.getElementById('hud-lives-canvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const iconSize = 20;
-    const gap = 6;
-    const max = maxLives || (this.currentGame ? this.currentGame.maxLives : CONFIG.DIFFICULTY_PRESETS.normal.livesMax);
-    for (let i = 0; i < max; i++) {
-      const cx = 12 + i * (iconSize + gap);
-      const cy = canvas.height / 2;
-      const active = i < lives;
-      const color = active ? CONFIG.COLORS.yellow : 'rgba(245,241,232,0.18)';
-      if (Assets.ready && active) {
-        Assets.draw(ctx, 'yellow', cx, cy, iconSize);
-      } else if (Assets.ready && !active) {
-        ctx.save();
-        ctx.globalAlpha = 0.25;
-        Assets.draw(ctx, 'white', cx, cy, iconSize);
-        ctx.restore();
-      } else {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(cx, cy, iconSize / 2.4, 0, Math.PI * 2);
-        ctx.fill();
+  // lives live inside each player's HUD chip now that the pool is per-player
+  _renderLives(players) {
+    (players || []).forEach((p) => {
+      const row = document.getElementById(`hud-lives-${p.index}`);
+      if (!row) return;
+      row.innerHTML = '';
+      for (let i = 0; i < p.maxLives; i++) {
+        const pip = document.createElement('span');
+        pip.className = 'hud-life-pip' + (i < p.lives ? ' on' : '');
+        row.appendChild(pip);
       }
-    }
+      const chip = document.getElementById(`hud-player-${p.index}`);
+      if (chip) chip.classList.toggle('hud-player-out', p.isOut);
+    });
   },
 
   _buildHudPlayers() {
@@ -454,16 +457,33 @@ const UI = {
       div.id = `hud-player-${p.index}`;
       div.style.color = p.color;
       const char = CONFIG.CHARACTERS[p.character];
-      div.innerHTML = `<img class="hud-avatar" src="${encodeURI(char.up)}" alt="" /><span class="hud-name">${p.name}</span>`;
+
+      const img = document.createElement('img');
+      img.className = 'hud-avatar';
+      img.src = encodeURI(char.up);
+      img.alt = '';
+
+      const meta = document.createElement('div');
+      meta.className = 'hud-player-meta';
+      const name = document.createElement('span');
+      name.className = 'hud-name';
+      name.textContent = p.name; // player-supplied, so never via innerHTML
+      const lives = document.createElement('span');
+      lives.className = 'hud-lives';
+      lives.id = `hud-lives-${p.index}`;
+      meta.append(name, lives);
+
+      div.append(img, meta);
       container.appendChild(div);
     });
   },
 
   _updateHud(state) {
-    document.getElementById('hud-mrr').textContent = `€${state.mrr.toLocaleString()}`;
-    const pct = Math.min(100, (state.mrr / state.targetMrr) * 100);
+    document.getElementById('hud-mrr').textContent = state.score.toLocaleString();
+    const pct = Math.min(100, (state.score / state.targetScore) * 100);
     document.getElementById('hud-mrr-fill').style.width = `${pct}%`;
     document.getElementById('hud-blockers').textContent = state.blockersRemoved;
+    this._renderLives(state.players);
 
     const t = Math.ceil(state.timeRemaining);
     const mm = String(Math.floor(t / 60)).padStart(2, '0');
@@ -502,9 +522,9 @@ const UI = {
       this._renderScorecard(won, result);
       this.showScreen('scorecard');
 
-      StorageManager.saveHighscore({
+      StorageManager.saveSharedHighscore({
         players: result.players.map((p) => ({ name: p.name, character: p.character })),
-        mrr: result.mrr,
+        score: result.score,
         blockersRemoved: result.blockersRemoved,
         timeRemaining: Math.round(result.timeRemaining),
         won,
@@ -522,13 +542,27 @@ const UI = {
     document.getElementById('scorecard-headline').textContent = headlines[result.reason] || headlines.TIME;
     document.getElementById('scorecard-headline').style.color = won ? CONFIG.COLORS.yellow : CONFIG.COLORS.pink;
 
+    // The breakdown is laid out so it visibly adds up to TOTAL SCORE:
+    // every player's contribution, then the team bonuses. Nothing is hidden,
+    // which is what the top figure and the cards below disagreeing came down to.
+    const signed = (n) => `${n < 0 ? '−' : '+'}${Math.abs(n).toLocaleString()}`;
+    const contributionRows = result.players
+      .map((p) => `<div class="sc-stat"><span class="sc-label">${this._escape(p.name)}</span><span class="sc-value">${signed(p.contribution)}</span></div>`)
+      .join('');
+    const bonusRows = [
+      result.timeBonus ? `<div class="sc-stat"><span class="sc-label">TIME BONUS</span><span class="sc-value">${signed(result.timeBonus)}</span></div>` : '',
+      result.livesBonus ? `<div class="sc-stat"><span class="sc-label">LIVES BONUS</span><span class="sc-value">${signed(result.livesBonus)}</span></div>` : '',
+      result.winBonus ? `<div class="sc-stat"><span class="sc-label">WIN BONUS</span><span class="sc-value">${signed(result.winBonus)}</span></div>` : '',
+    ].join('');
+
     const summary = document.getElementById('scorecard-summary');
     summary.innerHTML = `
-      <div class="sc-stat"><span class="sc-label">TOTAL MRR</span><span class="sc-value">€${result.mrr.toLocaleString()}</span></div>
+      <div class="sc-stat sc-stat-total"><span class="sc-label">TOTAL SCORE</span><span class="sc-value">${result.score.toLocaleString()}</span></div>
+      ${contributionRows}
+      ${bonusRows}
       <div class="sc-stat"><span class="sc-label">BLOCKERS REMOVED</span><span class="sc-value">${result.blockersRemoved}</span></div>
       <div class="sc-stat"><span class="sc-label">DEALS REACCELERATED</span><span class="sc-value">${result.dealsReaccelerated}</span></div>
       <div class="sc-stat"><span class="sc-label">TIME REMAINING</span><span class="sc-value">${Math.round(result.timeRemaining)}s</span></div>
-      <div class="sc-stat"><span class="sc-label">LIVES REMAINING</span><span class="sc-value">${result.livesRemaining} / ${result.maxLives}</span></div>
       <div class="sc-stat"><span class="sc-label">DIFFICULTY</span><span class="sc-value">${result.difficulty}</span></div>
     `;
 
@@ -539,14 +573,22 @@ const UI = {
       div.className = 'sc-player-card';
       const char = CONFIG.CHARACTERS[p.character] || CONFIG.CHARACTERS[0];
       div.innerHTML = `
-        <div class="sc-player-head"><img class="sc-avatar" src="${encodeURI(char.up)}" alt="" /><span>${p.name}</span></div>
+        <div class="sc-player-head"><img class="sc-avatar" src="${encodeURI(char.up)}" alt="" /><span>${this._escape(p.name)}</span></div>
         <div class="sc-player-row">SHOTS FIRED: ${p.shotsFired}</div>
         <div class="sc-player-row">ACCURACY: ${p.accuracy}%</div>
-        <div class="sc-player-row">MRR CONTRIBUTION: €${p.mrrContribution.toLocaleString()}</div>
+        <div class="sc-player-row">SCORE CONTRIBUTION: ${signed(p.contribution)}</div>
+        <div class="sc-player-row">LIVES LEFT: ${p.livesLeft} / ${result.maxLives}</div>
         <div class="sc-player-row">TIMES HIT: ${p.timesHit}</div>
       `;
       playersEl.appendChild(div);
     });
+  },
+
+  // player names are user input and land inside innerHTML templates above
+  _escape(text) {
+    const div = document.createElement('div');
+    div.textContent = text == null ? '' : String(text);
+    return div.innerHTML;
   },
 
   _wireScorecard() {
@@ -570,32 +612,56 @@ const UI = {
     document.getElementById('btn-hs-back').addEventListener('click', () => this.showScreen('start'));
   },
 
-  renderHighscores() {
-    const list = StorageManager.getHighscores();
+  async renderHighscores() {
     const el = document.getElementById('highscores-list');
+    el.innerHTML = '<p class="hs-empty">LOADING...</p>';
+    const list = await StorageManager.fetchSharedHighscores();
     if (!list.length) {
       el.innerHTML = '<p class="hs-empty">NO HIGHSCORES YET — PLAY A QUARTER!</p>';
       return;
     }
-    el.innerHTML = list
-      .map((entry, i) => {
-        // entries saved before characters existed only carry an emoji avatar
-        const names = entry.players
-          .map((p) => {
-            const char = CONFIG.CHARACTERS[p.character];
-            const icon = char ? `<img class="hs-avatar" src="${encodeURI(char.up)}" alt="" />` : p.avatar || '';
-            return `${icon} ${p.name}`;
-          })
-          .join(' & ');
-        return `
-        <div class="hs-row">
-          <span class="hs-rank">#${i + 1}</span>
-          <span class="hs-names">${names}</span>
-          <span class="hs-mrr">€${entry.mrr.toLocaleString()}</span>
-          <span class="hs-detail">${entry.blockersRemoved} blockers</span>
-          <span class="hs-detail">${entry.timeRemaining}s left</span>
-        </div>`;
-      })
-      .join('');
+
+    // TOTAL SCORE already folds in every end-of-round bonus, so the board just
+    // ranks by it — the same number the scorecard showed.
+    const ranked = [...list].sort((a, b) => b.score - a.score).slice(0, CONFIG.MAX_HIGHSCORES);
+    el.innerHTML = '';
+    ranked.forEach((entry, i) => {
+      const row = document.createElement('div');
+      row.className = 'hs-row';
+
+      const rank = document.createElement('span');
+      rank.className = 'hs-rank';
+      rank.textContent = `#${i + 1}`;
+
+      const names = document.createElement('span');
+      names.className = 'hs-names';
+      (entry.players || []).forEach((p, idx) => {
+        const char = CONFIG.CHARACTERS[p.character];
+        if (char) {
+          const icon = document.createElement('img');
+          icon.className = 'hs-avatar';
+          icon.src = encodeURI(char.up);
+          icon.alt = '';
+          names.appendChild(icon);
+        }
+        // names come from players, so they go in as text, never as markup
+        names.appendChild(document.createTextNode(` ${p.name}${idx < entry.players.length - 1 ? ' & ' : ''}`));
+      });
+
+      const score = document.createElement('span');
+      score.className = 'hs-mrr';
+      score.textContent = Number(entry.score || 0).toLocaleString();
+
+      const blockers = document.createElement('span');
+      blockers.className = 'hs-detail';
+      blockers.textContent = `${entry.blockersRemoved} blockers`;
+
+      const time = document.createElement('span');
+      time.className = 'hs-detail';
+      time.textContent = `${entry.timeRemaining}s left`;
+
+      row.append(rank, names, score, blockers, time);
+      el.appendChild(row);
+    });
   },
 };

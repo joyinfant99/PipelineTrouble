@@ -26,30 +26,43 @@ class Player {
     this.color = index === 0 ? CONFIG.COLORS.cyan : CONFIG.COLORS.pink;
 
     this.alive = true;
-    this.disabledUntil = 0;
     this.invulnUntil = 0;
     this.lastShotAt = -9999;
     this.recoilUntil = 0;
     this.walkPhase = 0;
     this.moving = false;
+    this.rapidFireUntil = 0;
+    this.shieldUntil = 0;
+
+    // each player carries their own pool — the round only ends once everyone is out
+    this.lives = CONFIG.STARTING_LIVES;
+    this.maxLives = CONFIG.MAX_LIVES;
 
     // stats
     this.shotsFired = 0;
     this.blockersHit = 0;
-    this.mrrContribution = 0;
+    this.contribution = 0;
     this.timesHit = 0;
-  }
-
-  get isDisabled() {
-    return performance.now() < this.disabledUntil;
   }
 
   get isInvuln() {
     return performance.now() < this.invulnUntil;
   }
 
+  get isRapidFiring() {
+    return performance.now() < this.rapidFireUntil;
+  }
+
+  get isShielded() {
+    return performance.now() < this.shieldUntil;
+  }
+
+  get isOut() {
+    return this.lives <= 0;
+  }
+
   update(dt, inputState, spawnProjectileFn) {
-    if (this.isDisabled) return;
+    if (this.isOut) return;
 
     let vx = 0;
     if (inputState.left) vx -= CONFIG.PLAYER_SPEED;
@@ -64,7 +77,8 @@ class Player {
     this.shootHeld = !!inputState.shoot;
     if (inputState.shoot) {
       const now = performance.now();
-      if (now - this.lastShotAt >= CONFIG.PROJECTILE_COOLDOWN_MS) {
+      const cooldown = this.isRapidFiring ? CONFIG.PROJECTILE_COOLDOWN_MS / 2 : CONFIG.PROJECTILE_COOLDOWN_MS;
+      if (now - this.lastShotAt >= cooldown) {
         this.lastShotAt = now;
         this.recoilUntil = now + 180;
         spawnProjectileFn(this);
@@ -91,24 +105,21 @@ class Player {
   }
 
   hitByBlocker() {
-    if (this.isInvuln || this.isDisabled) return false;
-    const now = performance.now();
-    this.disabledUntil = now + CONFIG.PLAYER_RESPAWN_MS;
-    this.invulnUntil = now + CONFIG.PLAYER_INVULN_MS;
+    if (this.isInvuln || this.isShielded || this.isOut) return false;
+    this.invulnUntil = performance.now() + CONFIG.PLAYER_INVULN_MS;
+    this.lives = Math.max(0, this.lives - 1);
     this.timesHit++;
     return true;
   }
 
   draw(ctx) {
     const now = performance.now();
-    if (this.isDisabled) {
-      // flashing while disabled
-      if (Math.floor(now / 100) % 2 === 0) return;
-    }
+    if (this.isOut) return; // knocked out of the round, nothing left to draw
+
     ctx.save();
-    if (this.isInvuln) {
-      ctx.globalAlpha = 0.55 + 0.35 * Math.sin(now / 60);
-    }
+    // faded rather than blinking while briefly invulnerable — the player keeps
+    // moving and shooting throughout, there is no lockout
+    if (this.isInvuln) ctx.globalAlpha = 0.4;
 
     const cx = this.x + this.w / 2;
     const pose = this.pose;
@@ -117,15 +128,26 @@ class Player {
     const feetY = this.groundY - bob;
     const spriteH = CONFIG.PLAYER_SPRITE_H;
 
+    if (this.isShielded) {
+      ctx.save();
+      ctx.strokeStyle = CONFIG.COLORS.green;
+      ctx.lineWidth = 2.5;
+      ctx.globalAlpha = 0.7 + 0.25 * Math.sin(now / 90);
+      ctx.beginPath();
+      ctx.ellipse(cx, feetY - spriteH * 0.45, spriteH * 0.34, spriteH * 0.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     const drew = Assets.drawCharacter(ctx, this.character, pose, cx, feetY, spriteH, this.facing < 0);
     if (!drew) this._drawFallbackBody(ctx, cx);
 
-    // recoil flash at the barrel right after firing
+    // recoil flash at the barrel right after firing — orange while rapid fire is up
     if (now < this.recoilUntil) {
       ctx.globalAlpha = (this.recoilUntil - now) / 180;
-      ctx.fillStyle = CONFIG.COLORS.yellow;
+      ctx.fillStyle = this.isRapidFiring ? CONFIG.COLORS.orange : CONFIG.COLORS.yellow;
       ctx.beginPath();
-      ctx.arc(this.muzzleX, this.muzzleY, 5, 0, Math.PI * 2);
+      ctx.arc(this.muzzleX, this.muzzleY, this.isRapidFiring ? 7 : 5, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
     }
@@ -245,6 +267,8 @@ class Blocker {
     this.vx = vx;
     this.vy = 0;
     this.speedMultiplier = speedMultiplier || 1;
+    // fixed bounce apex for this tier — always rebounds to the same height, scaled by round speed
+    this.bounceVy = -Math.sqrt(2 * CONFIG.GRAVITY * tierCfg.bounceHeight) * this.speedMultiplier;
     this.alive = true;
     this.color = tier === 0 ? CONFIG.COLORS.pink : tier === 1 ? CONFIG.COLORS.yellow : CONFIG.COLORS.cyan;
   }
@@ -268,11 +292,7 @@ class Blocker {
     const floorY = CONFIG.BLOCKER_FLOOR_Y - this.radius;
     if (this.y > floorY) {
       this.y = floorY;
-      this.vy = -Math.abs(this.vy) * 0.92;
-      if (Math.abs(this.vy) < 120) {
-        // ensure a lively minimum bounce so it doesn't go flat
-        this.vy = (-260 - this.tier * 40) * this.speedMultiplier;
-      }
+      this.vy = this.bounceVy;
     }
 
     // ceiling bounce
@@ -380,15 +400,19 @@ class ShockRing {
   }
 }
 
+const BONUS_KIND_GLYPHS = { cash: '€', rapid: '⚡', shield: '🛡' };
+
 class BonusBubble {
-  constructor(x, y, vx, speedMultiplier) {
+  constructor(x, y, vx, speedMultiplier, kind) {
     this.x = x;
     this.y = y;
     this.vx = vx;
     this.speedMultiplier = speedMultiplier || 1;
     this.vy = -200 * this.speedMultiplier;
     this.radius = CONFIG.BONUS_BUBBLE_RADIUS;
-    this.label = 'BONUS';
+    this.kind = kind || CONFIG.BONUS_KINDS[0];
+    this.label = this.kind.label;
+    this.color = CONFIG.COLORS[this.kind.color];
     this.alive = true;
     this.life = CONFIG.BONUS_BUBBLE_LIFETIME_MS;
   }
@@ -426,7 +450,7 @@ class BonusBubble {
     const flicker = this.life < 1500 && Math.floor(this.life / 120) % 2 === 0;
     if (flicker) return;
     ctx.save();
-    ctx.fillStyle = CONFIG.COLORS.white;
+    ctx.fillStyle = this.color;
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius * pulse, 0, Math.PI * 2);
     ctx.fill();
@@ -434,10 +458,18 @@ class BonusBubble {
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius * pulse * 0.72, 0, Math.PI * 2);
     ctx.fill();
-    if (Assets.ready) {
-      Assets.draw(ctx, 'white', this.x, this.y, this.radius * 1.2 * pulse);
+
+    const glyph = BONUS_KIND_GLYPHS[this.kind.key];
+    if (glyph) {
+      ctx.fillStyle = this.color;
+      ctx.font = `bold ${Math.round(this.radius * 1.15)}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(glyph, this.x, this.y + 1);
+    } else if (Assets.ready) {
+      Assets.draw(ctx, this.kind.color, this.x, this.y, this.radius * 1.2 * pulse);
     } else {
-      BLOCKER_FALLBACK_ICON(ctx, this.x, this.y, this.radius, CONFIG.COLORS.white);
+      BLOCKER_FALLBACK_ICON(ctx, this.x, this.y, this.radius, this.color);
     }
     ctx.restore();
   }

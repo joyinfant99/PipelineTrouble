@@ -513,6 +513,66 @@ html, body {
   background: var(--pink);
   color: var(--bg) !important;
 }
+.hud-player-out {
+  opacity: 0.35;
+}
+.hud-player-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.hud-lives {
+  display: flex;
+  gap: 3px;
+}
+.hud-life-pip {
+  width: 8px;
+  height: 8px;
+  background: rgba(245, 241, 232, 0.2);
+  border: 1px solid currentColor;
+}
+.hud-life-pip.on {
+  background: currentColor;
+}
+
+/* ---------- Bubble legend (above the play field) ---------- */
+.bubble-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  width: 960px;
+  max-width: 100%;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border: 2px solid rgba(32, 214, 210, 0.45);
+  background: rgba(18, 10, 42, 0.75);
+  font-size: 11px;
+  color: var(--white);
+}
+.legend-title {
+  font-family: var(--pixel-font);
+  font-size: 8px;
+  color: var(--yellow);
+  letter-spacing: 1px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+}
+@media (max-width: 900px) {
+  .legend-item { white-space: normal; }
+}
 
 /* sprite thumbnails wherever a player is listed */
 .hud-avatar,
@@ -757,3 +817,19 @@ html, body {
   .hud { font-size: 11px; }
   .hud-mrr-bar { width: 140px; }
 }
+
+/* ---------- Scorecard: how-to numbering + total emphasis ---------- */
+.how-num {
+  font-family: var(--pixel-font);
+  font-size: 16px;
+  color: var(--yellow);
+  min-width: 34px;
+  text-align: center;
+  flex: none;
+}
+.sc-stat-total {
+  border-color: var(--yellow);
+  border-width: 3px;
+}
+.sc-stat-total .sc-label { color: var(--yellow); }
+.sc-stat-total .sc-value { font-size: 26px; color: var(--yellow); }

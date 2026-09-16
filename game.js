@@ -31,9 +31,12 @@ class Game {
     this._nextDealId = 1;
     this._nextBonusBubbleAt = 0;
 
-    this.score = new ScoreManager(this.difficultyPreset.targetMrr);
+    this.score = new ScoreManager(this.difficultyPreset.targetScore);
     this.maxLives = this.difficultyPreset.livesMax;
-    this.lives = this.maxLives;
+    this.players.forEach((p) => {
+      p.maxLives = this.maxLives;
+      p.lives = this.maxLives;
+    });
     this.timeRemaining = this.difficultyPreset.roundDuration;
     this.running = false;
     this.ended = false;
@@ -94,7 +97,18 @@ class Game {
     const radius = CONFIG.BONUS_BUBBLE_RADIUS;
     const x = radius + Math.random() * (CONFIG.CANVAS_W - radius * 2);
     const vx = (Math.random() < 0.5 ? -1 : 1) * CONFIG.BONUS_BUBBLE_SPEED * this.speedMultiplier;
-    this.bonusBubble = new BonusBubble(x, radius + 4, vx, this.speedMultiplier);
+    this.bonusBubble = new BonusBubble(x, radius + 4, vx, this.speedMultiplier, this._pickBonusKind());
+  }
+
+  _pickBonusKind() {
+    const kinds = CONFIG.BONUS_KINDS;
+    const totalWeight = kinds.reduce((sum, k) => sum + k.weight, 0);
+    let roll = Math.random() * totalWeight;
+    for (const kind of kinds) {
+      roll -= kind.weight;
+      if (roll <= 0) return kind;
+    }
+    return kinds[0];
   }
 
   _spawnProjectile(player) {
@@ -186,7 +200,8 @@ class Game {
       this._endRound('WON');
       return;
     }
-    if (this.lives <= 0) {
+    // each player has their own pool, so the round only ends once nobody is left standing
+    if (this.players.every((p) => p.isOut)) {
       this._endRound('LIVES');
       return;
     }
@@ -229,18 +244,18 @@ class Game {
 
     // blocker vs player
     for (const p of this.players) {
-      if (p.isDisabled) continue;
+      if (p.isOut) continue;
       for (const b of this.blockers) {
         if (!b.alive) continue;
         if (this._circleRectOverlap(b, { x: p.x, y: p.y, w: p.w, h: p.h })) {
           const wasHit = p.hitByBlocker();
           if (wasHit) {
-            this.score.applyPenalty(this.difficultyPreset.hitPenalty);
-            this.lives = Math.max(0, this.lives - 1);
+            // charged to the player who took the hit, so their contribution stays honest
+            this.score.applyPenalty(this.difficultyPreset.hitPenalty, p.index, this.players);
             AudioManager.playerHit();
             this._shake(220, 10);
             if (this.callbacks.onPlayerHit) this.callbacks.onPlayerHit(p);
-            if (this.callbacks.onLivesChanged) this.callbacks.onLivesChanged(this.lives);
+            if (this.callbacks.onLivesChanged) this.callbacks.onLivesChanged(this.players);
           }
         }
       }
@@ -261,7 +276,7 @@ class Game {
     // tier 0 (biggest blocker) gets the fattest burst
     spawnBurst(this.particles, b.x, b.y, b.color, b.tier === 0 ? CONFIG.PARTICLE_COUNT + 10 : undefined);
     this._shake(140, b.tier === 0 ? 7 : 4);
-    this.score.addBlockerRemoved(ownerIndex, this.players);
+    this.score.addBlockerRemoved(b.tier, ownerIndex, this.players);
 
     const dealId = b.dealId;
     let remaining = this.dealBlockerCount.get(dealId) || 1;
@@ -287,8 +302,7 @@ class Game {
 
     if (remaining <= 0) {
       this.dealBlockerCount.delete(dealId);
-      this.score.addDealReaccelerated();
-      this.score.addMrr(CONFIG.DEAL_MRR_VALUE, ownerIndex, this.players);
+      this.score.addDealReaccelerated(ownerIndex, this.players);
       AudioManager.mrrGained();
       if (this.callbacks.onDealReaccelerated) this.callbacks.onDealReaccelerated();
       this._spawnDeal();
@@ -301,17 +315,41 @@ class Game {
     const bubble = this.bonusBubble;
     this.bonusBubble = null;
     this._nextBonusBubbleAt = ts + this._randomBonusDelay();
-    spawnBurst(this.particles, bubble.x, bubble.y, CONFIG.COLORS.white, CONFIG.PARTICLE_COUNT + 6);
+    spawnBurst(this.particles, bubble.x, bubble.y, bubble.color, CONFIG.PARTICLE_COUNT + 6);
 
-    if (this.lives < this.maxLives) {
-      this.lives += 1;
-      AudioManager.lifeGained();
-      if (this.callbacks.onLivesChanged) this.callbacks.onLivesChanged(this.lives);
-      if (this.callbacks.onBonusCaptured) this.callbacks.onBonusCaptured('LIFE +1');
-    } else {
-      this.score.addMrr(CONFIG.BONUS_MRR_AT_MAX_LIVES, ownerIndex, this.players);
-      AudioManager.bonusMrr();
-      if (this.callbacks.onBonusCaptured) this.callbacks.onBonusCaptured(`+€${CONFIG.BONUS_MRR_AT_MAX_LIVES.toLocaleString()} MRR`);
+    const player = this.players[ownerIndex];
+    const weights = CONFIG.SCORE_WEIGHTS;
+    const banner = (text) => this.callbacks.onBonusCaptured && this.callbacks.onBonusCaptured(text);
+
+    switch (bubble.kind.key) {
+      case 'life':
+        // the life goes to whoever popped it, since each player has their own pool
+        if (player && player.lives < player.maxLives) {
+          player.lives += 1;
+          AudioManager.lifeGained();
+          if (this.callbacks.onLivesChanged) this.callbacks.onLivesChanged(this.players);
+          banner(`${player.name} LIFE +1`);
+        } else {
+          this.score.addBonus(weights.lifeBonusAtMax, ownerIndex, this.players);
+          AudioManager.bonusMrr();
+          banner(`+${weights.lifeBonusAtMax.toLocaleString()} PTS`);
+        }
+        break;
+      case 'cash':
+        this.score.addBonus(weights.cashBonus, ownerIndex, this.players);
+        AudioManager.bonusMrr();
+        banner(`+${weights.cashBonus.toLocaleString()} PTS`);
+        break;
+      case 'rapid':
+        if (player) player.rapidFireUntil = performance.now() + CONFIG.RAPID_FIRE_DURATION_MS;
+        AudioManager.bonusMrr();
+        banner('RAPID FIRE!');
+        break;
+      case 'shield':
+        if (player) player.shieldUntil = performance.now() + CONFIG.SHIELD_DURATION_MS;
+        AudioManager.bonusMrr();
+        banner('SHIELD ACTIVE!');
+        break;
     }
   }
 
@@ -338,17 +376,38 @@ class Game {
     }
   }
 
+  // TOTAL SCORE is built so the scorecard adds up in front of the player:
+  //   sum(player contributions) + time + lives + win === total
+  // Player contributions already net off their own hit penalties, so there is no
+  // hidden term — the summary at the top and the cards underneath agree exactly.
   _buildResult(reason) {
+    const won = reason === 'WON';
+    const weights = CONFIG.SCORE_WEIGHTS;
+    const timeRemaining = Math.max(0, this.timeRemaining);
+    const livesRemaining = this.players.reduce((sum, p) => sum + p.lives, 0);
+
+    const playedScore = this.players.reduce((sum, p) => sum + p.contribution, 0);
+    const timeBonus = won ? Math.round(timeRemaining * weights.timePerSec) : 0;
+    const livesBonus = livesRemaining * weights.perLifeLeft;
+    const winBonus = won ? weights.win : 0;
+    const total = Math.max(0, playedScore + timeBonus + livesBonus + winBonus);
+
     return {
-      won: reason === 'WON',
+      won,
       reason,
-      mrr: Math.max(0, Math.round(this.score.mrr - this.score.pipelinePenalty)),
-      rawMrr: this.score.mrr,
-      pipelinePenalty: this.score.pipelinePenalty,
+      score: total,
+      playedScore,
+      blockerPoints: this.score.blockerPoints,
+      dealPoints: this.score.dealPoints,
+      bonusPoints: this.score.bonusPoints,
+      penalty: this.score.penalty,
+      timeBonus,
+      livesBonus,
+      winBonus,
       blockersRemoved: this.score.blockersRemoved,
       dealsReaccelerated: this.score.dealsReaccelerated,
-      timeRemaining: Math.max(0, this.timeRemaining),
-      livesRemaining: this.lives,
+      timeRemaining,
+      livesRemaining,
       maxLives: this.maxLives,
       difficulty: this.difficultyPreset.label,
       players: this.players.map((p) => ({
@@ -356,7 +415,8 @@ class Game {
         character: p.character,
         shotsFired: p.shotsFired,
         blockersHit: p.blockersHit,
-        mrrContribution: p.mrrContribution,
+        contribution: p.contribution,
+        livesLeft: p.lives,
         timesHit: p.timesHit,
         accuracy: p.shotsFired > 0 ? Math.round((p.blockersHit / p.shotsFired) * 100) : 0,
       })),
@@ -365,11 +425,10 @@ class Game {
 
   _getHudState() {
     return {
-      mrr: Math.max(0, Math.round(this.score.mrr - this.score.pipelinePenalty)),
-      targetMrr: this.difficultyPreset.targetMrr,
+      score: Math.round(this.score.netScore),
+      targetScore: this.difficultyPreset.targetScore,
       blockersRemoved: this.score.blockersRemoved,
       timeRemaining: Math.max(0, this.timeRemaining),
-      lives: this.lives,
       maxLives: this.maxLives,
       players: this.players,
     };

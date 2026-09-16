@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=007" />
+<link rel="stylesheet" href="style.css?v=008" />
 </head>
 <body>
 <div id="app">
@@ -125,24 +125,24 @@
     <h2 class="screen-title">HOW TO PLAY</h2>
     <div class="how-content">
       <div class="how-step">
-        <span class="how-emoji">🔫⬆️🔴</span>
-        <span class="how-text">SHOOT THE BALLS</span>
+        <span class="how-num">1</span>
+        <span class="how-text">Move with your keys and shoot straight up to pop the blockers floating above you.</span>
       </div>
       <div class="how-step">
-        <span class="how-emoji">🔴💥🟡🟡</span>
-        <span class="how-text">BIG BALLS BREAK INTO SMALL ONES</span>
+        <span class="how-num">2</span>
+        <span class="how-text">Big blockers split into two smaller ones when popped. Every pop scores &mdash; smaller pieces are worth more.</span>
       </div>
       <div class="how-step">
-        <span class="how-emoji">🟡💥💰</span>
-        <span class="how-text">POP THEM ALL TO WIN MONEY</span>
+        <span class="how-num">3</span>
+        <span class="how-text">Clearing a whole deal banks a big bonus. Grab floating pickups for points, a life, rapid fire, or a shield.</span>
       </div>
       <div class="how-step">
-        <span class="how-emoji">🙅‍♂️🔴😵</span>
-        <span class="how-text">DON'T TOUCH A BALL!</span>
+        <span class="how-num">4</span>
+        <span class="how-text">Don't let a blocker touch you &mdash; it costs one of your lives and knocks points off your score.</span>
       </div>
       <div class="how-step">
-        <span class="how-emoji">🏆💶💶💶</span>
-        <span class="how-text">GET &euro;100,000 TO WIN</span>
+        <span class="how-num">5</span>
+        <span class="how-text">Hit the target score before the clock runs out to win the quarter.</span>
       </div>
       <div class="how-controls" id="how-controls"></div>
     </div>
@@ -155,18 +155,20 @@
   <section id="screen-game" class="screen">
     <div class="hud">
       <div class="hud-left">
-        <div class="hud-mrr">CLOSED WON <span id="hud-mrr">&euro;0</span> / <span id="hud-mrr-target">&euro;100K</span></div>
+        <div class="hud-mrr">TOTAL SCORE <span id="hud-mrr">0</span> / <span id="hud-mrr-target">100,000</span></div>
         <div class="hud-mrr-bar"><div class="hud-mrr-bar-fill" id="hud-mrr-fill"></div></div>
-        <div class="hud-lives-row">
-          <span class="hud-lives-label">LIVES</span>
-          <canvas id="hud-lives-canvas" width="130" height="24"></canvas>
-        </div>
       </div>
       <div class="hud-center">
         <div class="hud-timer" id="hud-timer">QUARTER 01:00</div>
         <div class="hud-blockers">BLOCKERS REMOVED: <span id="hud-blockers">0</span></div>
       </div>
       <div class="hud-right" id="hud-players"></div>
+    </div>
+    <div class="bubble-legend">
+      <span class="legend-title">WHAT'S THAT BUBBLE?</span>
+      <span class="legend-item"><i class="legend-swatch" style="background:#FF3B9D"></i>STALLED DEAL &mdash; splits in two</span>
+      <span class="legend-item"><i class="legend-swatch" style="background:#FFD23F"></i>LEGAL / PROCUREMENT &mdash; splits again</span>
+      <span class="legend-item"><i class="legend-swatch" style="background:#20D6D2"></i>SECURITY REVIEW etc. &mdash; pop the last piece to bank the deal</span>
     </div>
     <div class="canvas-wrap">
       <canvas id="game-canvas" width="960" height="600"></canvas>
@@ -206,15 +208,17 @@
 
 </div>
 
-<script src="config.js?v=007"></script>
-<script src="assets.js?v=007"></script>
-<script src="storage.js?v=007"></script>
-<script src="audio.js?v=007"></script>
-<script src="input.js?v=007"></script>
-<script src="entities.js?v=007"></script>
-<script src="score.js?v=007"></script>
-<script src="game.js?v=007"></script>
-<script src="ui.js?v=007"></script>
-<script src="main.js?v=007"></script>
+<!-- Supabase client for the shared leaderboard (UMD build, v2) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js?v=008"></script>
+<script src="assets.js?v=008"></script>
+<script src="storage.js?v=008"></script>
+<script src="audio.js?v=008"></script>
+<script src="input.js?v=008"></script>
+<script src="entities.js?v=008"></script>
+<script src="score.js?v=008"></script>
+<script src="game.js?v=008"></script>
+<script src="ui.js?v=008"></script>
+<script src="main.js?v=008"></script>
 </body>
 </html>
