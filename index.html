@@ -6,40 +6,116 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="googlebot" content="noindex, nofollow">
 <title>PIPELINE TROUBLE</title>
-<link rel="stylesheet" href="style.css?v=001" />
+<!-- Pixel fonts for retro arcade aesthetic (Press Start 2P for titles, VT323 for mono text) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=002" />
 </head>
 <body>
 <div id="app">
 
   <!-- START -->
-  <section id="screen-start" class="screen active">
-    <div class="title-wrap">
-      <h1 class="game-title">PIPELINE<br/>TROUBLE</h1>
-      <p class="tagline">Pop the blockers. Reaccelerate the pipeline.</p>
-    </div>
-    <div class="options-panel">
-      <div class="option-group">
-        <span class="option-label">PLAYERS</span>
-        <div class="toggle-row" id="mode-toggle">
-          <button class="btn-toggle" data-mode="single">1 PLAYER</button>
-          <button class="btn-toggle" data-mode="multi">2 PLAYER</button>
+  <section id="screen-start" class="screen active pt-arcade">
+    <div class="pt-scanlines" aria-hidden="true"></div>
+    <div class="pt-grid">
+
+      <!-- LEFT: Arcade Cabinet Graphic -->
+      <div class="pt-col pt-col-cabinet" aria-hidden="true">
+        <div class="cabinet">
+          <div class="cabinet-marquee">PIPELINE TROUBLE</div>
+          <div class="cabinet-screen">
+            <span class="cabinet-screen-text">START<br/>GAME</span>
+          </div>
+          <div class="cabinet-panel">
+            <div class="cabinet-logo" title="Personio">P</div>
+          </div>
+          <div class="cabinet-deck">
+            <div class="joystick"><div class="joystick-base"></div><div class="joystick-stick"></div><div class="joystick-ball"></div></div>
+            <div class="deck-buttons">
+              <span class="deck-btn deck-btn-pink"></span>
+              <span class="deck-btn deck-btn-blue"></span>
+              <span class="deck-btn deck-btn-gold"></span>
+            </div>
+          </div>
+          <div class="cabinet-coin">
+            <span class="coin-slot"></span>
+            <span class="coin-label">INSERT COIN</span>
+          </div>
         </div>
       </div>
-      <div class="option-group">
-        <span class="option-label">BUBBLE SPEED</span>
-        <div class="toggle-row" id="speed-toggle">
-          <button class="btn-toggle" data-speed="slow">SLOW</button>
-          <button class="btn-toggle" data-speed="normal">NORMAL</button>
-          <button class="btn-toggle" data-speed="fast">FAST</button>
+
+      <!-- CENTER: Title & Main Navigation Menu -->
+      <div class="pt-col pt-col-center">
+        <div class="pt-title-wrap">
+          <h1 class="pt-title">
+            <span class="pt-title-row">PIPELINE</span>
+            <span class="pt-title-row">TROUBLE</span>
+          </h1>
+          <p class="pt-subtitle">Pop the blockers. Reaccelerate the pipeline.</p>
+        </div>
+
+        <div class="pt-menu-frame">
+          <ul class="pt-menu">
+            <li class="pt-menu-item">
+              <span class="pt-menu-icon-left">🕹️</span>
+              <button class="pt-menu-btn" id="btn-start-game">START GAME</button>
+              <span class="pt-menu-icon-right">P</span>
+            </li>
+            <li class="pt-menu-item">
+              <span class="pt-menu-icon-left">🕹️</span>
+              <button class="pt-menu-btn" id="btn-customize">CUSTOMIZE PLAYERS</button>
+              <span class="pt-menu-icon-right">P</span>
+            </li>
+            <li class="pt-menu-item">
+              <span class="pt-menu-icon-left">🕹️</span>
+              <button class="pt-menu-btn" id="btn-highscores">HIGH SCORES</button>
+              <span class="pt-menu-icon-right">P</span>
+            </li>
+            <li class="pt-menu-item">
+              <span class="pt-menu-icon-left">🕹️</span>
+              <button class="pt-menu-btn" id="btn-howtoplay">HOW TO PLAY</button>
+              <span class="pt-menu-icon-right">P</span>
+            </li>
+            <li class="pt-menu-item">
+              <span class="pt-menu-icon-left">🕹️</span>
+              <button class="pt-menu-btn" id="btn-sound">SOUND: ON</button>
+              <span class="pt-menu-icon-right">P</span>
+            </li>
+          </ul>
+          <div class="pt-selector" aria-hidden="true">
+            <span class="pt-arrow">▶</span><span class="pt-arrow">▶</span><span class="pt-arrow">▶</span>
+          </div>
+        </div>
+
+        <div class="pt-options">
+          <div class="option-group">
+            <span class="option-label">PLAYERS</span>
+            <div class="toggle-row" id="mode-toggle">
+              <button class="btn-toggle" data-mode="single">1 PLAYER</button>
+              <button class="btn-toggle" data-mode="multi">2 PLAYER</button>
+            </div>
+          </div>
+          <div class="option-group">
+            <span class="option-label">BUBBLE SPEED</span>
+            <div class="toggle-row" id="speed-toggle">
+              <button class="btn-toggle" data-speed="slow">SLOW</button>
+              <button class="btn-toggle" data-speed="normal">NORMAL</button>
+              <button class="btn-toggle" data-speed="fast">FAST</button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="menu">
-      <button class="btn btn-primary" id="btn-start-game">START GAME</button>
-      <button class="btn" id="btn-customize">CUSTOMIZE PLAYERS</button>
-      <button class="btn" id="btn-highscores">HIGHSCORES</button>
-      <button class="btn" id="btn-howtoplay">HOW TO PLAY</button>
-      <button class="btn" id="btn-sound">SOUND: ON</button>
+
+      <!-- RIGHT: Ambient Space/Background -->
+      <div class="pt-col pt-col-ambient" aria-hidden="true">
+        <div class="ambient-space">
+          <div class="invader invader-1"></div>
+          <div class="invader invader-2"></div>
+          <div class="invader invader-3"></div>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -177,6 +253,7 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="config.js?v=001"></script>
 <script src="assets.js?v=001"></script>
 <script src="storage.js?v=001"></script>

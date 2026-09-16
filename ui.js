@@ -311,7 +311,7 @@ const UI = {
       this._renderScorecard(won, result);
       this.showScreen('scorecard');
 
-      StorageManager.saveHighscore({
+      StorageManager.saveSharedHighscore({
         players: result.players.map((p) => ({ name: p.name, avatar: p.avatar })),
         mrr: result.mrr,
         blockersRemoved: result.blockersRemoved,
@@ -377,25 +377,41 @@ const UI = {
     document.getElementById('btn-hs-back').addEventListener('click', () => this.showScreen('start'));
   },
 
-  renderHighscores() {
-    const list = StorageManager.getHighscores();
+  async renderHighscores() {
     const el = document.getElementById('highscores-list');
+    el.innerHTML = '<p class="hs-empty">LOADING...</p>';
+    const list = await StorageManager.fetchSharedHighscores();
     if (!list.length) {
       el.innerHTML = '<p class="hs-empty">NO HIGHSCORES YET — PLAY A QUARTER!</p>';
       return;
     }
-    el.innerHTML = list
-      .map((entry, i) => {
-        const names = entry.players.map((p) => `${p.avatar} ${p.name}`).join(' & ');
-        return `
-        <div class="hs-row">
-          <span class="hs-rank">#${i + 1}</span>
-          <span class="hs-names">${names}</span>
-          <span class="hs-mrr">€${entry.mrr.toLocaleString()}</span>
-          <span class="hs-detail">${entry.blockersRemoved} blockers</span>
-          <span class="hs-detail">${entry.timeRemaining}s left</span>
-        </div>`;
-      })
-      .join('');
+    el.innerHTML = '';
+    list.forEach((entry, i) => {
+      const row = document.createElement('div');
+      row.className = 'hs-row';
+
+      const rank = document.createElement('span');
+      rank.className = 'hs-rank';
+      rank.textContent = `#${i + 1}`;
+
+      const names = document.createElement('span');
+      names.className = 'hs-names';
+      names.textContent = entry.players.map((p) => `${p.avatar} ${p.name}`).join(' & ');
+
+      const mrr = document.createElement('span');
+      mrr.className = 'hs-mrr';
+      mrr.textContent = `€${entry.mrr.toLocaleString()}`;
+
+      const blockers = document.createElement('span');
+      blockers.className = 'hs-detail';
+      blockers.textContent = `${entry.blockersRemoved} blockers`;
+
+      const time = document.createElement('span');
+      time.className = 'hs-detail';
+      time.textContent = `${entry.timeRemaining}s left`;
+
+      row.append(rank, names, mrr, blockers, time);
+      el.appendChild(row);
+    });
   },
 };

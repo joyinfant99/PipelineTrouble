@@ -75,6 +75,9 @@ const CONFIG = {
     { left: 'arrowleft', right: 'arrowright', shoot: 'enter', shootAlt: 'arrowup' },
   ],
 
+  SUPABASE_URL: 'https://fllujguqlnwwrgcbkoej.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_wwBAgok47zqVmuc7igveeQ_s9jO90HA',
+
   STORAGE_KEYS: {
     players: 'pt_players_v1',
     sound: 'pt_sound_v1',

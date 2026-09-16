@@ -4,6 +4,16 @@
   --yellow: #FFD23F;
   --pink: #FF3B9D;
   --white: #F5F1E8;
+
+  /* Personio Retro Palette (start screen) */
+  --pt-bg: #0B0820;
+  --pt-bg2: #1F1A3A;
+  --pt-purple: #7B2CBF;
+  --pt-purple2: #9D4EDD;
+  --pt-blue: #0077FE;
+  --pt-gold: #C8963E;
+  --pt-white: #FFFFFF;
+  --pt-slate: #1E222D;
 }
 
 * { box-sizing: border-box; }
@@ -89,57 +99,210 @@ html, body {
   max-width: none;
 }
 
-/* ---------- Start screen ---------- */
-.title-wrap {
-  text-align: center;
-  margin-top: 24px;
-}
-.game-title {
-  font-size: 56px;
-  line-height: 1.05;
-  margin: 0;
-  color: var(--yellow);
-  text-shadow: 4px 4px 0 var(--pink);
-  letter-spacing: 2px;
-}
-.tagline {
-  color: var(--cyan);
-  font-size: 16px;
-  margin-top: 12px;
-  letter-spacing: 1px;
+/* ============================================================
+   START SCREEN — Retro 8-bit Arcade (Personio palette)
+   ============================================================ */
+.pt-arcade {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-width: 1280px;
+  background: var(--pt-bg);
+  overflow: hidden;
+  border: 3px solid var(--pt-gold);
+  box-shadow: 0 0 40px rgba(123, 44, 191, 0.35);
+  /* pixel-grid overlay + soft vignette */
+  background-image:
+    linear-gradient(rgba(31, 26, 58, 0.6) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31, 26, 58, 0.6) 1px, transparent 1px),
+    radial-gradient(ellipse at center, rgba(11, 8, 32, 0) 40%, rgba(11, 8, 32, 0.95) 100%);
+  background-size: 24px 24px, 24px 24px, 100% 100%;
 }
 
-.options-panel {
+.pt-scanlines {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.18) 0px,
+    rgba(0, 0, 0, 0.18) 1px,
+    transparent 2px,
+    transparent 3px
+  );
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+}
+
+.pt-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  padding: 16px 24px;
+  gap: 16px;
+}
+
+.pt-col-cabinet,
+.pt-col-ambient {
   display: flex;
-  gap: 28px;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+/* ---------- Center: Title ---------- */
+.pt-col-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  height: 100%;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.pt-title-wrap {
+  text-align: center;
+}
+.pt-title {
+  margin: 0;
+  font-family: 'Press Start 2P', monospace;
+  line-height: 1.5;
+  letter-spacing: 2px;
+}
+.pt-title-row {
+  display: block;
+  font-size: clamp(18px, 3vw, 34px);
+  color: var(--pt-white);
+  -webkit-text-stroke: 2px var(--pt-purple2);
+  text-shadow:
+    3px 3px 0 var(--pt-purple),
+    0 0 14px var(--pt-purple2);
+}
+.pt-subtitle {
+  font-family: 'VT323', 'Courier New', monospace;
+  font-size: clamp(14px, 1.6vw, 20px);
+  color: var(--pt-white);
+  letter-spacing: 1px;
+  margin: 6px 0 0;
+}
+
+/* ---------- Center: Menu ---------- */
+.pt-menu-frame {
+  border: 3px solid var(--pt-gold);
+  background: rgba(30, 34, 45, 0.85);
+  box-shadow: 0 0 0 3px var(--pt-bg), 0 0 16px rgba(200, 150, 62, 0.4);
+  padding: 10px;
+  width: 100%;
+  max-width: 380px;
+}
+.pt-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pt-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 2px solid var(--pt-gold);
+  background: var(--pt-slate);
+  padding: 6px 10px;
+}
+.pt-menu-icon-left {
+  font-size: 14px;
+  flex: 0 0 auto;
+}
+.pt-menu-icon-right {
+  flex: 0 0 auto;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: var(--pt-purple2);
+  text-shadow: 0 0 6px var(--pt-purple2);
+}
+.pt-menu-btn {
+  flex: 1;
+  text-align: left;
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(9px, 1vw, 11px);
+  letter-spacing: 1px;
+  color: var(--pt-white);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 4px;
+}
+.pt-menu-btn:hover,
+.pt-menu-btn:focus-visible {
+  color: var(--pt-blue);
+  outline: none;
+}
+.pt-menu-item:has(.pt-menu-btn:hover) .pt-menu-icon-right,
+.pt-menu-item:has(.pt-menu-btn:focus-visible) .pt-menu-icon-right {
+  color: var(--pt-blue);
+  text-shadow: 0 0 10px var(--pt-blue);
+}
+
+.pt-selector {
+  text-align: center;
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.pt-arrow {
+  color: var(--pt-white);
+  text-shadow: 0 0 8px var(--pt-purple2);
+  font-size: 14px;
+  animation: pt-arrow-pulse 1s infinite ease-in-out;
+}
+.pt-arrow:nth-child(2) { animation-delay: 0.15s; }
+.pt-arrow:nth-child(3) { animation-delay: 0.3s; }
+@keyframes pt-arrow-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+/* ---------- Center: Options (players / speed) ---------- */
+.pt-options {
+  display: flex;
+  gap: 20px;
   flex-wrap: wrap;
   justify-content: center;
-  margin-top: 28px;
 }
 .option-group {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 .option-label {
-  font-size: 11px;
-  color: var(--pink);
+  font-family: 'VT323', monospace;
+  font-size: 13px;
+  color: var(--pt-purple2);
   letter-spacing: 1px;
 }
 .toggle-row {
   display: flex;
   gap: 0;
-  border: 2px solid var(--cyan);
+  border: 2px solid var(--pt-blue);
 }
 .btn-toggle {
-  font-family: inherit;
-  font-size: 11px;
-  padding: 8px 12px;
-  background: var(--bg);
-  color: var(--cyan);
+  font-family: 'VT323', monospace;
+  font-size: 13px;
+  padding: 6px 10px;
+  background: var(--pt-bg);
+  color: var(--pt-blue);
   border: none;
-  border-right: 2px solid var(--cyan);
+  border-right: 2px solid var(--pt-blue);
   cursor: pointer;
   letter-spacing: 0.5px;
 }
@@ -147,8 +310,167 @@ html, body {
   border-right: none;
 }
 .btn-toggle.active {
-  background: var(--cyan);
-  color: var(--bg);
+  background: var(--pt-blue);
+  color: var(--pt-bg);
+}
+
+/* ---------- Left: Arcade Cabinet ---------- */
+.cabinet {
+  width: min(180px, 90%);
+  background: var(--pt-slate);
+  border: 3px solid var(--pt-blue);
+  border-radius: 6px 6px 2px 2px;
+  padding: 10px;
+  box-shadow: 6px 6px 0 rgba(0, 119, 254, 0.25), 0 0 24px rgba(0, 119, 254, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cabinet-marquee {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: var(--pt-purple2);
+  text-align: center;
+  letter-spacing: 0.5px;
+  padding: 4px;
+  border: 2px solid var(--pt-purple2);
+  background: var(--pt-bg);
+  text-shadow: 0 0 6px var(--pt-purple2);
+}
+.cabinet-screen {
+  background: #000;
+  border: 3px solid #333;
+  padding: 14px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cabinet-screen-text {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--pt-blue);
+  text-align: center;
+  line-height: 1.6;
+  text-shadow: 0 0 8px var(--pt-blue), 0 0 16px var(--pt-blue);
+  animation: pt-arrow-pulse 1.4s infinite ease-in-out;
+}
+.cabinet-panel {
+  display: flex;
+  justify-content: center;
+}
+.cabinet-logo {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pt-purple);
+  color: var(--pt-white);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  border: 2px solid var(--pt-purple2);
+}
+.cabinet-deck {
+  background: #143d1f;
+  border: 2px solid #0d2a15;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.joystick { position: relative; width: 26px; height: 26px; }
+.joystick-base {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 8px;
+  background: #333;
+  border-radius: 2px;
+}
+.joystick-stick {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 14px;
+  background: #555;
+}
+.joystick-ball {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--pt-gold);
+  box-shadow: 0 0 6px var(--pt-gold);
+}
+.deck-buttons { display: flex; gap: 6px; }
+.deck-btn {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.deck-btn-pink { background: var(--pink); box-shadow: 0 0 6px var(--pink); }
+.deck-btn-blue { background: var(--pt-blue); box-shadow: 0 0 6px var(--pt-blue); }
+.deck-btn-gold { background: var(--pt-gold); box-shadow: 0 0 6px var(--pt-gold); }
+.cabinet-coin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.coin-slot {
+  width: 20px;
+  height: 4px;
+  background: #000;
+  border: 1px solid #444;
+}
+.coin-label {
+  font-family: 'VT323', monospace;
+  font-size: 10px;
+  color: var(--pt-gold);
+  letter-spacing: 1px;
+}
+
+/* ---------- Right: Ambient Space ---------- */
+.ambient-space {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.invader {
+  position: absolute;
+  width: 46px;
+  height: 32px;
+  opacity: 0.35;
+  background-color: var(--pt-bg2);
+  clip-path: polygon(
+    20% 0%, 80% 0%, 80% 20%, 100% 20%, 100% 60%, 80% 60%,
+    80% 80%, 60% 80%, 60% 100%, 40% 100%, 40% 80%, 20% 80%,
+    20% 60%, 0% 60%, 0% 20%, 20% 20%
+  );
+  filter: drop-shadow(0 0 8px rgba(31, 26, 58, 0.8));
+  animation: pt-drift 6s infinite ease-in-out;
+}
+.invader-1 { top: 15%; left: 20%; transform: scale(1.4); animation-delay: 0s; }
+.invader-2 { top: 55%; left: 55%; transform: scale(1); animation-delay: 1.2s; opacity: 0.25; }
+.invader-3 { top: 75%; left: 10%; transform: scale(0.8); animation-delay: 2.4s; opacity: 0.2; }
+@keyframes pt-drift {
+  0%, 100% { transform: translateY(0) scale(var(--s, 1)); }
+  50% { transform: translateY(-10px) scale(var(--s, 1)); }
+}
+
+@media (max-width: 900px) {
+  .pt-arcade { aspect-ratio: auto; height: auto; }
+  .pt-grid { grid-template-columns: 1fr; height: auto; }
+  .pt-col-cabinet, .pt-col-ambient { display: none; }
 }
 
 /* ---------- Screen titles ---------- */
