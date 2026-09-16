@@ -84,7 +84,19 @@ class Game {
     const radius = CONFIG.BONUS_BUBBLE_RADIUS;
     const x = radius + Math.random() * (CONFIG.CANVAS_W - radius * 2);
     const vx = (Math.random() < 0.5 ? -1 : 1) * CONFIG.BONUS_BUBBLE_SPEED * this.speedMultiplier;
-    this.bonusBubble = new BonusBubble(x, radius + 4, vx, this.speedMultiplier);
+    const kind = this._pickBonusKind();
+    this.bonusBubble = new BonusBubble(x, radius + 4, vx, this.speedMultiplier, kind);
+  }
+
+  _pickBonusKind() {
+    const kinds = CONFIG.BONUS_KINDS;
+    const totalWeight = kinds.reduce((sum, k) => sum + k.weight, 0);
+    let roll = Math.random() * totalWeight;
+    for (const kind of kinds) {
+      roll -= kind.weight;
+      if (roll <= 0) return kind;
+    }
+    return kinds[0];
   }
 
   _spawnProjectile(player) {
@@ -199,7 +211,6 @@ class Game {
 
     // blocker vs player
     for (const p of this.players) {
-      if (p.isDisabled) continue;
       for (const b of this.blockers) {
         if (!b.alive) continue;
         if (this._circleRectOverlap(b, { x: p.x, y: p.y, w: p.w, h: p.h })) {
@@ -265,17 +276,38 @@ class Game {
     const bubble = this.bonusBubble;
     this.bonusBubble = null;
     this._nextBonusBubbleAt = ts + this._randomBonusDelay();
-    spawnBurst(this.particles, bubble.x, bubble.y, CONFIG.COLORS.white, CONFIG.PARTICLE_COUNT + 6);
+    spawnBurst(this.particles, bubble.x, bubble.y, CONFIG.COLORS[bubble.kind.color], CONFIG.PARTICLE_COUNT + 6);
 
-    if (this.lives < CONFIG.MAX_LIVES) {
-      this.lives += 1;
-      AudioManager.lifeGained();
-      if (this.callbacks.onLivesChanged) this.callbacks.onLivesChanged(this.lives);
-      if (this.callbacks.onBonusCaptured) this.callbacks.onBonusCaptured('LIFE +1');
-    } else {
-      this.score.addMrr(CONFIG.BONUS_MRR_AT_MAX_LIVES, ownerIndex, this.players);
-      AudioManager.bonusMrr();
-      if (this.callbacks.onBonusCaptured) this.callbacks.onBonusCaptured(`+€${CONFIG.BONUS_MRR_AT_MAX_LIVES.toLocaleString()} MRR`);
+    const player = this.players[ownerIndex];
+
+    switch (bubble.kind.key) {
+      case 'life':
+        if (this.lives < CONFIG.MAX_LIVES) {
+          this.lives += 1;
+          AudioManager.lifeGained();
+          if (this.callbacks.onLivesChanged) this.callbacks.onLivesChanged(this.lives);
+          if (this.callbacks.onBonusCaptured) this.callbacks.onBonusCaptured('LIFE +1');
+        } else {
+          this.score.addMrr(CONFIG.BONUS_MRR_AT_MAX_LIVES, ownerIndex, this.players);
+          AudioManager.bonusMrr();
+          if (this.callbacks.onBonusCaptured) this.callbacks.onBonusCaptured(`+€${CONFIG.BONUS_MRR_AT_MAX_LIVES.toLocaleString()} MRR`);
+        }
+        break;
+      case 'cash':
+        this.score.addMrr(CONFIG.CASH_BONUS_MRR, ownerIndex, this.players);
+        AudioManager.bonusMrr();
+        if (this.callbacks.onBonusCaptured) this.callbacks.onBonusCaptured(`+€${CONFIG.CASH_BONUS_MRR.toLocaleString()} MRR`);
+        break;
+      case 'rapid':
+        if (player) player.rapidFireUntil = ts + CONFIG.RAPID_FIRE_DURATION_MS;
+        AudioManager.bonusMrr();
+        if (this.callbacks.onBonusCaptured) this.callbacks.onBonusCaptured('RAPID FIRE!');
+        break;
+      case 'shield':
+        if (player) player.shieldUntil = ts + CONFIG.SHIELD_DURATION_MS;
+        AudioManager.bonusMrr();
+        if (this.callbacks.onBonusCaptured) this.callbacks.onBonusCaptured('SHIELD ACTIVE!');
+        break;
     }
   }
 
@@ -302,16 +334,34 @@ class Game {
   }
 
   _buildResult(reason) {
+    const won = reason === 'WON';
+    const dealMrr = Math.round(this.score.netMrr);
+    const blockersRemoved = this.score.blockersRemoved;
+    const timeRemaining = Math.max(0, this.timeRemaining);
+    const livesRemaining = this.lives;
+
+    // Performance bonuses fold straight into MRR — it's the one source-of-truth
+    // metric everywhere (HUD, scorecard, highscores). Nothing else is tracked
+    // as a separate "score"; it all just becomes more MRR at the close.
+    const timeBonus = won ? Math.round(timeRemaining * CONFIG.TIME_BONUS_PER_SEC) : 0;
+    const livesBonus = livesRemaining * CONFIG.LIVES_BONUS_PER_LIFE;
+    const winBonus = won ? CONFIG.WIN_BONUS_MRR : 0;
+    const mrr = dealMrr + timeBonus + livesBonus + winBonus;
+
     return {
-      won: reason === 'WON',
+      won,
       reason,
-      mrr: Math.max(0, Math.round(this.score.mrr - this.score.pipelinePenalty)),
+      mrr,
+      dealMrr,
+      timeBonus,
+      livesBonus,
+      winBonus,
       rawMrr: this.score.mrr,
       pipelinePenalty: this.score.pipelinePenalty,
-      blockersRemoved: this.score.blockersRemoved,
+      blockersRemoved,
       dealsReaccelerated: this.score.dealsReaccelerated,
-      timeRemaining: Math.max(0, this.timeRemaining),
-      livesRemaining: this.lives,
+      timeRemaining,
+      livesRemaining,
       players: this.players.map((p) => ({
         name: p.name,
         avatar: p.avatar,
@@ -326,7 +376,7 @@ class Game {
 
   _getHudState() {
     return {
-      mrr: Math.max(0, Math.round(this.score.mrr - this.score.pipelinePenalty)),
+      mrr: Math.round(this.score.netMrr),
       blockersRemoved: this.score.blockersRemoved,
       timeRemaining: Math.max(0, this.timeRemaining),
       lives: this.lives,
@@ -357,7 +407,7 @@ class Game {
     // labels drawn last, outside/below each ball, so they stay crisp and readable
     // above every other layer no matter how small the ball has shrunk.
     for (const b of this.blockers) this._drawLabel(ctx, b.x, b.y + b.radius, b.label, b.color);
-    if (this.bonusBubble) this._drawLabel(ctx, this.bonusBubble.x, this.bonusBubble.y + this.bonusBubble.radius, this.bonusBubble.label, CONFIG.COLORS.white);
+    if (this.bonusBubble) this._drawLabel(ctx, this.bonusBubble.x, this.bonusBubble.y + this.bonusBubble.radius, this.bonusBubble.label, this.bonusBubble.color);
   }
 
   _drawLabel(ctx, x, y, text, color) {

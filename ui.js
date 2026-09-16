@@ -165,14 +165,33 @@ const UI = {
         const action = remapBtn.dataset.action;
         remapBtn.textContent = this._keyLabel(cfg.controls[action]);
         remapBtn.onclick = () => {
+          const prevKey = cfg.controls[action];
           remapBtn.textContent = 'PRESS A KEY...';
           InputManager.captureNextKey((key) => {
+            if (this._isKeyTaken(key, idx, action)) {
+              remapBtn.textContent = 'ALREADY USED';
+              setTimeout(() => {
+                remapBtn.textContent = this._keyLabel(prevKey);
+              }, 1000);
+              return;
+            }
             cfg.controls[action] = key;
             remapBtn.textContent = this._keyLabel(key);
           });
         };
       });
     });
+  },
+
+  // true if `key` is already bound to some other control (any action, either
+  // player) besides the one currently being remapped, so both players are
+  // kept on disjoint key sets.
+  _isKeyTaken(key, playerIdx, action) {
+    return this.playersConfig.some((cfg, idx) =>
+      Object.entries(cfg.controls).some(
+        ([a, k]) => k === key && !(idx === playerIdx && a === action)
+      )
+    );
   },
 
   _keyLabel(key) {
@@ -331,9 +350,19 @@ const UI = {
     document.getElementById('scorecard-headline').textContent = headlines[result.reason] || headlines.TIME;
     document.getElementById('scorecard-headline').style.color = won ? CONFIG.COLORS.yellow : CONFIG.COLORS.pink;
 
+    // MRR is the one source-of-truth metric — every bonus below just adds
+    // more of it, so the breakdown shows where TOTAL MRR actually came from.
+    const bonusRows = [
+      result.dealMrr ? `<div class="sc-stat"><span class="sc-label">MRR FROM DEALS</span><span class="sc-value">€${result.dealMrr.toLocaleString()}</span></div>` : '',
+      result.timeBonus ? `<div class="sc-stat"><span class="sc-label">TIME BONUS</span><span class="sc-value">+€${result.timeBonus.toLocaleString()}</span></div>` : '',
+      result.livesBonus ? `<div class="sc-stat"><span class="sc-label">LIVES BONUS</span><span class="sc-value">+€${result.livesBonus.toLocaleString()}</span></div>` : '',
+      result.winBonus ? `<div class="sc-stat"><span class="sc-label">WIN BONUS</span><span class="sc-value">+€${result.winBonus.toLocaleString()}</span></div>` : '',
+    ].join('');
+
     const summary = document.getElementById('scorecard-summary');
     summary.innerHTML = `
-      <div class="sc-stat"><span class="sc-label">TOTAL MRR</span><span class="sc-value">€${result.mrr.toLocaleString()}</span></div>
+      <div class="sc-stat sc-stat-total"><span class="sc-label">TOTAL MRR</span><span class="sc-value">€${result.mrr.toLocaleString()}</span></div>
+      ${bonusRows}
       <div class="sc-stat"><span class="sc-label">BLOCKERS REMOVED</span><span class="sc-value">${result.blockersRemoved}</span></div>
       <div class="sc-stat"><span class="sc-label">DEALS REACCELERATED</span><span class="sc-value">${result.dealsReaccelerated}</span></div>
       <div class="sc-stat"><span class="sc-label">TIME REMAINING</span><span class="sc-value">${Math.round(result.timeRemaining)}s</span></div>
@@ -385,8 +414,12 @@ const UI = {
       el.innerHTML = '<p class="hs-empty">NO HIGHSCORES YET — PLAY A QUARTER!</p>';
       return;
     }
+    // TOTAL MRR (which already includes every end-of-round bonus) is the
+    // single source-of-truth metric, so the leaderboard just ranks by it —
+    // highest MRR first.
+    const ranked = [...list].sort((a, b) => b.mrr - a.mrr).slice(0, CONFIG.MAX_HIGHSCORES);
     el.innerHTML = '';
-    list.forEach((entry, i) => {
+    ranked.forEach((entry, i) => {
       const row = document.createElement('div');
       row.className = 'hs-row';
 

@@ -78,6 +78,9 @@ const StorageManager = {
 
   // Shared scoreboard, backed by Supabase. Falls back to the local list above
   // (e.g. offline, or Supabase not configured) so the game still works.
+  // MRR (which already folds in every end-of-round bonus) is the single
+  // source-of-truth metric, so ranking highest-MRR-first server-side matches
+  // the leaderboard shown in the UI.
   async fetchSharedHighscores() {
     const client = StorageManager.getSupabaseClient();
     if (!client) return StorageManager.getHighscores();

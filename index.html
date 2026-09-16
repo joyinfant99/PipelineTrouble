@@ -10,14 +10,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=002" />
+<link rel="stylesheet" href="style.css?v=004" />
 </head>
 <body>
 <div id="app">
 
   <!-- START -->
   <section id="screen-start" class="screen active pt-arcade">
-    <div class="pt-scanlines" aria-hidden="true"></div>
     <div class="pt-grid">
 
       <!-- LEFT: Arcade Cabinet Graphic -->
@@ -173,24 +172,24 @@
     <h2 class="screen-title">HOW TO PLAY</h2>
     <div class="how-content">
       <div class="how-step">
-        <span class="how-emoji">🔫⬆️🔴</span>
-        <span class="how-text">SHOOT THE BALLS</span>
+        <span class="how-num">1</span>
+        <span class="how-text">Move with your keys and shoot straight up to pop the blockers floating above you.</span>
       </div>
       <div class="how-step">
-        <span class="how-emoji">🔴💥🟡🟡</span>
-        <span class="how-text">BIG BALLS BREAK INTO SMALL ONES</span>
+        <span class="how-num">2</span>
+        <span class="how-text">Big blockers split into two smaller ones when popped. Keep shooting until nothing's left.</span>
       </div>
       <div class="how-step">
-        <span class="how-emoji">🟡💥💰</span>
-        <span class="how-text">POP THEM ALL TO WIN MONEY</span>
+        <span class="how-num">3</span>
+        <span class="how-text">Fully clearing a deal adds MRR to your pipeline. Grab floating bonus bubbles for extra MRR, an extra life, rapid fire, or a shield.</span>
       </div>
       <div class="how-step">
-        <span class="how-emoji">🙅‍♂️🔴😵</span>
-        <span class="how-text">DON'T TOUCH A BALL!</span>
+        <span class="how-num">4</span>
+        <span class="how-text">Don't let a blocker touch you — it costs a life and knocks MRR off your pipeline.</span>
       </div>
       <div class="how-step">
-        <span class="how-emoji">🏆💶💶💶</span>
-        <span class="how-text">GET &euro;100,000 TO WIN</span>
+        <span class="how-num">5</span>
+        <span class="how-text">Reach &euro;100,000 MRR before the clock or your lives run out to win the quarter.</span>
       </div>
       <div class="how-controls" id="how-controls"></div>
     </div>
@@ -216,16 +215,34 @@
       </div>
       <div class="hud-right" id="hud-players"></div>
     </div>
-    <div class="canvas-wrap">
-      <canvas id="game-canvas" width="960" height="600"></canvas>
-      <button class="btn-pause" id="btn-pause" title="Pause">❚❚</button>
-      <div class="pause-overlay" id="pause-overlay" hidden>
-        <div class="pause-box">
-          <h2>PAUSED</h2>
-          <button class="btn btn-primary" id="btn-resume">RESUME</button>
-          <button class="btn" id="btn-pause-quit">QUIT TO MENU</button>
+    <div class="game-play-row">
+      <div class="canvas-wrap">
+        <canvas id="game-canvas" width="960" height="600"></canvas>
+        <button class="btn-pause" id="btn-pause" title="Pause">❚❚</button>
+        <div class="pause-overlay" id="pause-overlay" hidden>
+          <div class="pause-box">
+            <h2>PAUSED</h2>
+            <button class="btn btn-primary" id="btn-resume">RESUME</button>
+            <button class="btn" id="btn-pause-quit">QUIT TO MENU</button>
+          </div>
         </div>
       </div>
+      <aside class="bubble-legend">
+        <h3 class="legend-title">WHAT'S THAT BUBBLE?</h3>
+        <div class="legend-group">
+          <div class="legend-group-label">DEAL BLOCKERS</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:#FF3B9D"></span>STALLED DEAL — splits in two when popped</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:#FFD23F"></span>LEGAL / PROCUREMENT — splits again</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:#20D6D2"></span>SECURITY REVIEW etc. — pop the last piece to bank <strong>+€12,500 MRR</strong></div>
+        </div>
+        <div class="legend-group">
+          <div class="legend-group-label">BONUS PICKUPS</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:#F5F1E8"></span><strong>BONUS</strong> — +1 life, or MRR if lives are full</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:#FFD23F"></span><strong>+MRR</strong> — instant cash bonus</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:#FF8C42"></span><strong>RAPID FIRE</strong> — faster shots for 8s</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:#3DDC84"></span><strong>SHIELD</strong> — temporary invulnerability for 6s</div>
+        </div>
+      </aside>
     </div>
   </section>
 
@@ -254,15 +271,15 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="config.js?v=001"></script>
-<script src="assets.js?v=001"></script>
-<script src="storage.js?v=001"></script>
-<script src="audio.js?v=001"></script>
-<script src="input.js?v=001"></script>
-<script src="entities.js?v=001"></script>
-<script src="score.js?v=001"></script>
-<script src="game.js?v=001"></script>
-<script src="ui.js?v=001"></script>
+<script src="config.js?v=002"></script>
+<script src="assets.js?v=002"></script>
+<script src="storage.js?v=002"></script>
+<script src="audio.js?v=002"></script>
+<script src="input.js?v=002"></script>
+<script src="entities.js?v=002"></script>
+<script src="score.js?v=002"></script>
+<script src="game.js?v=002"></script>
+<script src="ui.js?v=002"></script>
 <script src="main.js?v=001"></script>
 </body>
 </html>

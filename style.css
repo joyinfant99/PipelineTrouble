@@ -21,12 +21,38 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
-  color: var(--white);
-  font-family: 'Courier New', Courier, monospace;
+  background: var(--pt-bg);
+  color: var(--pt-white);
+  font-family: 'VT323', 'Courier New', Courier, monospace;
   height: 100%;
   overflow-x: hidden;
   image-rendering: pixelated;
+}
+
+body {
+  position: relative;
+  background-image:
+    linear-gradient(rgba(31, 26, 58, 0.6) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31, 26, 58, 0.6) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* CRT scanline overlay across the whole app, every screen */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.16) 0px,
+    rgba(0, 0, 0, 0.16) 1px,
+    transparent 2px,
+    transparent 3px
+  );
+  mix-blend-mode: multiply;
+  opacity: 0.45;
 }
 
 #app {
@@ -49,39 +75,51 @@ html, body {
   display: flex;
 }
 
+/* Gold-framed arcade panel chrome, shared by every non-start screen */
+#screen-setup,
+#screen-how,
+#screen-scorecard,
+#screen-highscores {
+  background: var(--pt-bg);
+  border: 3px solid var(--pt-gold);
+  box-shadow: 0 0 0 3px var(--pt-bg), 0 0 30px rgba(123, 44, 191, 0.3);
+  padding: 28px 24px;
+}
+
 /* ---------- Buttons ---------- */
 .btn {
-  font-family: inherit;
-  font-size: 16px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
   letter-spacing: 1px;
-  padding: 14px 28px;
-  background: var(--bg);
-  color: var(--cyan);
-  border: 3px solid var(--cyan);
+  padding: 14px 22px;
+  background: var(--pt-slate);
+  color: var(--pt-white);
+  border: 3px solid var(--pt-gold);
   cursor: pointer;
   text-transform: uppercase;
-  box-shadow: 4px 4px 0 var(--cyan);
-  transition: transform 0.05s ease;
+  box-shadow: 4px 4px 0 var(--pt-gold);
+  transition: transform 0.05s ease, color 0.1s ease, border-color 0.1s ease;
 }
 .btn:hover {
-  background: var(--cyan);
-  color: var(--bg);
+  color: var(--pt-blue);
+  border-color: var(--pt-blue);
+  box-shadow: 4px 4px 0 var(--pt-blue);
 }
 .btn:active {
   transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0 var(--cyan);
+  box-shadow: 2px 2px 0 var(--pt-blue);
 }
 .btn-primary {
-  color: var(--yellow);
-  border-color: var(--yellow);
-  box-shadow: 4px 4px 0 var(--yellow);
+  border-color: var(--pt-purple2);
+  box-shadow: 4px 4px 0 var(--pt-purple2);
 }
 .btn-primary:hover {
-  background: var(--yellow);
-  color: var(--bg);
+  color: var(--pt-blue);
+  border-color: var(--pt-blue);
+  box-shadow: 4px 4px 0 var(--pt-blue);
 }
 .btn-primary:active {
-  box-shadow: 2px 2px 0 var(--yellow);
+  box-shadow: 2px 2px 0 var(--pt-blue);
 }
 
 .menu {
@@ -117,22 +155,6 @@ html, body {
     linear-gradient(90deg, rgba(31, 26, 58, 0.6) 1px, transparent 1px),
     radial-gradient(ellipse at center, rgba(11, 8, 32, 0) 40%, rgba(11, 8, 32, 0.95) 100%);
   background-size: 24px 24px, 24px 24px, 100% 100%;
-}
-
-.pt-scanlines {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.18) 0px,
-    rgba(0, 0, 0, 0.18) 1px,
-    transparent 2px,
-    transparent 3px
-  );
-  mix-blend-mode: multiply;
-  opacity: 0.5;
 }
 
 .pt-grid {
@@ -475,10 +497,14 @@ html, body {
 
 /* ---------- Screen titles ---------- */
 .screen-title {
-  color: var(--yellow);
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(14px, 2.4vw, 22px);
+  color: var(--pt-white);
   letter-spacing: 2px;
-  text-shadow: 3px 3px 0 var(--pink);
-  margin-bottom: 8px;
+  -webkit-text-stroke: 1.5px var(--pt-purple2);
+  text-shadow: 2px 2px 0 var(--pt-purple), 0 0 12px var(--pt-purple2);
+  margin-bottom: 16px;
+  text-align: center;
 }
 
 /* ---------- Player setup ---------- */
@@ -490,17 +516,19 @@ html, body {
   width: 100%;
 }
 .setup-player {
-  border: 3px solid var(--cyan);
+  border: 3px solid var(--pt-gold);
   padding: 16px;
   width: 280px;
-  background: rgba(32, 214, 210, 0.05);
+  background: var(--pt-slate);
 }
 .setup-player-disabled {
   opacity: 0.35;
   pointer-events: none;
 }
 .setup-player h3 {
-  color: var(--pink);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  color: var(--pt-purple2);
   margin-top: 0;
   letter-spacing: 1px;
 }
@@ -508,9 +536,10 @@ html, body {
   width: 100%;
   padding: 8px;
   font-family: inherit;
-  background: var(--bg);
-  color: var(--white);
-  border: 2px solid var(--white);
+  font-size: 16px;
+  background: var(--pt-bg);
+  color: var(--pt-white);
+  border: 2px solid var(--pt-gold);
   margin-bottom: 12px;
   text-transform: uppercase;
 }
@@ -523,14 +552,14 @@ html, body {
 .avatar-btn {
   font-size: 22px;
   padding: 8px;
-  background: var(--bg);
-  border: 2px solid var(--white);
+  background: var(--pt-bg);
+  border: 2px solid var(--pt-gold);
   cursor: pointer;
-  color: var(--white);
+  color: var(--pt-white);
 }
 .avatar-btn.selected {
-  border-color: var(--yellow);
-  background: rgba(255, 210, 63, 0.2);
+  border-color: var(--pt-blue);
+  background: rgba(0, 119, 254, 0.2);
 }
 .controls-remap {
   display: flex;
@@ -541,21 +570,21 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: 15px;
 }
 .remap-btn {
   font-family: inherit;
-  background: var(--bg);
-  color: var(--cyan);
-  border: 2px solid var(--cyan);
+  background: var(--pt-bg);
+  color: var(--pt-blue);
+  border: 2px solid var(--pt-blue);
   padding: 6px 10px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 14px;
   min-width: 100px;
 }
 .remap-btn:hover {
-  background: var(--cyan);
-  color: var(--bg);
+  background: var(--pt-blue);
+  color: var(--pt-bg);
 }
 
 /* ---------- How to play ---------- */
@@ -567,22 +596,32 @@ html, body {
   display: flex;
   align-items: center;
   gap: 20px;
-  border: 2px solid var(--cyan);
+  border: 2px solid var(--pt-gold);
+  background: var(--pt-slate);
   padding: 14px 20px;
   margin-bottom: 14px;
 }
-.how-emoji {
-  font-size: 34px;
-  white-space: nowrap;
+.how-num {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  color: var(--pt-bg);
+  background: var(--pt-gold);
+  border: 2px solid var(--pt-purple2);
 }
 .how-text {
   font-size: 20px;
-  color: var(--white);
+  color: var(--pt-white);
   letter-spacing: 0.5px;
-  line-height: 1.3;
+  line-height: 1.4;
 }
-.hl-yellow { color: var(--yellow); }
-.hl-cyan { color: var(--cyan); }
+.hl-yellow { color: var(--pt-gold); }
+.hl-cyan { color: var(--pt-blue); }
 .how-controls {
   display: flex;
   gap: 32px;
@@ -591,25 +630,27 @@ html, body {
   justify-content: center;
 }
 .how-controls-card {
-  border: 2px solid var(--pink);
+  border: 2px solid var(--pt-purple2);
+  background: var(--pt-slate);
   padding: 12px 20px;
   text-align: center;
 }
 .how-controls-card strong {
-  color: var(--pink);
+  color: var(--pt-purple2);
   font-size: 16px;
   display: block;
   margin-bottom: 6px;
 }
 .how-controls-card p {
-  font-size: 16px;
+  font-size: 18px;
   margin: 0;
-  color: var(--white);
+  color: var(--pt-white);
 }
 
 /* ---------- Game screen ---------- */
 #screen-game {
   position: relative;
+  max-width: 1220px;
 }
 .hud {
   display: flex;
@@ -624,18 +665,18 @@ html, body {
 }
 .hud-left { min-width: 220px; }
 .hud-mrr {
-  color: var(--yellow);
+  color: var(--pt-gold);
   letter-spacing: 1px;
 }
 .hud-mrr-bar {
   width: 220px;
   height: 10px;
-  border: 2px solid var(--yellow);
+  border: 2px solid var(--pt-gold);
   margin-top: 4px;
 }
 .hud-mrr-bar-fill {
   height: 100%;
-  background: var(--yellow);
+  background: var(--pt-gold);
   width: 0%;
   transition: width 0.15s ease;
 }
@@ -647,7 +688,7 @@ html, body {
 }
 .hud-lives-label {
   font-size: 10px;
-  color: var(--yellow);
+  color: var(--pt-gold);
   letter-spacing: 1px;
 }
 #hud-lives-canvas {
@@ -657,7 +698,7 @@ html, body {
   text-align: center;
 }
 .hud-timer {
-  color: var(--cyan);
+  color: var(--pt-blue);
   font-size: 16px;
   letter-spacing: 1px;
 }
@@ -666,7 +707,7 @@ html, body {
   animation: pulse 0.5s infinite;
 }
 .hud-blockers {
-  color: var(--white);
+  color: var(--pt-white);
   font-size: 12px;
   margin-top: 2px;
 }
@@ -693,15 +734,80 @@ html, body {
   50% { opacity: 0.4; }
 }
 
+.game-play-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 .canvas-wrap {
   position: relative;
   width: 960px;
   max-width: 100%;
 }
 
+.bubble-legend {
+  width: 230px;
+  max-width: 100%;
+  border: 2px solid var(--pt-gold);
+  background: var(--pt-slate);
+  padding: 10px 12px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.legend-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--pt-gold);
+  letter-spacing: 1px;
+}
+.legend-group {
+  margin-bottom: 10px;
+}
+.legend-group:last-child {
+  margin-bottom: 0;
+}
+.legend-group-label {
+  color: var(--pt-blue);
+  font-size: 10px;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+.legend-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--pt-white);
+  margin-bottom: 5px;
+}
+.legend-item strong {
+  color: var(--pt-gold);
+}
+.legend-swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-top: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+@media (max-width: 1220px) {
+  #screen-game {
+    max-width: 1000px;
+  }
+  .bubble-legend {
+    width: 960px;
+    max-width: 100%;
+  }
+}
+
 #game-canvas {
-  background: var(--bg);
-  border: 3px solid var(--cyan);
+  background: var(--pt-bg);
+  border: 3px solid var(--pt-blue);
   width: 960px;
   max-width: 100%;
   height: auto;
@@ -711,31 +817,26 @@ html, body {
 .btn-pause {
   position: absolute;
   top: 10px;
-  right: -46px;
+  right: 10px;
   font-family: inherit;
   font-size: 16px;
-  background: var(--bg);
-  color: var(--yellow);
-  border: 2px solid var(--yellow);
+  background: var(--pt-bg);
+  color: var(--pt-gold);
+  border: 2px solid var(--pt-gold);
   padding: 8px 12px;
   cursor: pointer;
   line-height: 1;
   z-index: 6;
 }
-@media (max-width: 1040px) {
-  .btn-pause {
-    right: 10px;
-  }
-}
 .btn-pause:hover {
-  background: var(--yellow);
-  color: var(--bg);
+  background: var(--pt-gold);
+  color: var(--pt-bg);
 }
 
 .pause-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(18, 10, 42, 0.88);
+  background: rgba(11, 8, 32, 0.9);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -751,15 +852,18 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  border: 3px solid var(--yellow);
+  border: 3px solid var(--pt-gold);
   padding: 32px 40px;
-  background: var(--bg);
+  background: var(--pt-bg);
 }
 .pause-box h2 {
-  color: var(--yellow);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 18px;
+  color: var(--pt-white);
   letter-spacing: 3px;
   margin: 0;
-  text-shadow: 3px 3px 0 var(--pink);
+  -webkit-text-stroke: 1.5px var(--pt-purple2);
+  text-shadow: 2px 2px 0 var(--pt-purple);
 }
 .pause-box .btn {
   width: 220px;
@@ -770,10 +874,10 @@ html, body {
   top: 45%;
   left: 50%;
   transform: translate(-50%, -50%) scale(0.8);
-  color: var(--yellow);
+  color: var(--pt-gold);
   font-size: 28px;
   letter-spacing: 2px;
-  text-shadow: 3px 3px 0 var(--pink);
+  text-shadow: 3px 3px 0 var(--pt-purple);
   opacity: 0;
   pointer-events: none;
   white-space: nowrap;
@@ -798,7 +902,8 @@ html, body {
   margin-bottom: 20px;
 }
 .sc-stat {
-  border: 2px solid var(--cyan);
+  border: 2px solid var(--pt-gold);
+  background: var(--pt-slate);
   padding: 10px 16px;
   display: flex;
   flex-direction: column;
@@ -806,14 +911,22 @@ html, body {
   min-width: 140px;
 }
 .sc-label {
-  font-size: 10px;
-  color: var(--cyan);
+  font-size: 11px;
+  color: var(--pt-blue);
   letter-spacing: 1px;
 }
 .sc-value {
-  font-size: 20px;
-  color: var(--white);
+  font-size: 22px;
+  color: var(--pt-white);
   margin-top: 4px;
+}
+.sc-stat-total {
+  border-color: var(--yellow);
+  background: rgba(255, 210, 63, 0.1);
+}
+.sc-stat-total .sc-value {
+  color: var(--yellow);
+  font-size: 26px;
 }
 .scorecard-players {
   display: flex;
@@ -822,15 +935,16 @@ html, body {
   justify-content: center;
 }
 .sc-player-card {
-  border: 3px solid var(--pink);
+  border: 3px solid var(--pt-purple2);
+  background: var(--pt-slate);
   padding: 14px;
   width: 240px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.8;
 }
 .sc-player-head {
   font-size: 16px;
-  color: var(--yellow);
+  color: var(--pt-gold);
   margin-bottom: 8px;
   display: flex;
   gap: 8px;
@@ -849,30 +963,30 @@ html, body {
   display: flex;
   gap: 16px;
   align-items: center;
-  border-bottom: 2px solid rgba(32, 214, 210, 0.3);
+  border-bottom: 2px solid rgba(200, 150, 62, 0.3);
   padding: 8px 4px;
-  font-size: 13px;
+  font-size: 15px;
   flex-wrap: wrap;
 }
 .hs-rank {
-  color: var(--yellow);
+  color: var(--pt-gold);
   width: 32px;
 }
 .hs-names {
   flex: 1;
   min-width: 160px;
-  color: var(--white);
+  color: var(--pt-white);
 }
 .hs-mrr {
-  color: var(--cyan);
+  color: var(--pt-blue);
   width: 100px;
 }
 .hs-detail {
-  color: var(--pink);
-  font-size: 11px;
+  color: var(--pt-purple2);
+  font-size: 13px;
 }
 .hs-empty {
-  color: var(--cyan);
+  color: var(--pt-blue);
 }
 
 @media (max-width: 600px) {

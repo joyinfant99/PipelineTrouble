@@ -33,7 +33,15 @@ class ScoreManager {
     this.pipelinePenalty += amount;
   }
 
+  // net MRR — what's actually shown as "TOTAL MRR" everywhere (HUD, scorecard,
+  // highscores). The win condition below used to check raw `mrr` while every
+  // display showed this net figure, so a team could see the target hit on
+  // screen without the round actually ending, or vice versa.
+  get netMrr() {
+    return Math.max(0, this.mrr - this.pipelinePenalty);
+  }
+
   get isTargetReached() {
-    return this.mrr >= CONFIG.TARGET_MRR;
+    return this.netMrr >= CONFIG.TARGET_MRR;
   }
 }
