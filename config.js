@@ -72,11 +72,12 @@ const CONFIG = {
 
   // Every blocker, whatever its size, rebounds until its centre reaches this line —
   // one predictable ceiling to the bounce instead of small ones peaking far lower
-  // than big ones. It sits well above the player sprite (head top is y=468), so
-  // there is always a clear lane to shoot up through. Fixed-timestep integration
-  // means the apex actually lands a handful of pixels below this figure; the number
-  // that matters is that every size lands on the same line as every other.
-  BLOCKER_APEX_Y: 70,
+  // than big ones. Kept clear of the player sprite (head top is y=468) so there is
+  // always a lane to shoot up through, but not so near the top of the field that
+  // blockers pick up a punishing amount of speed on the way back down.
+  // Fixed-timestep integration lands the apex a few pixels under this figure; what
+  // matters is that every size lands on the same line as every other.
+  BLOCKER_APEX_Y: 170,
 
   DEAL_MRR_VALUE: 12500, // points awarded per fully-cleared deal
 

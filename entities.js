@@ -267,19 +267,20 @@ class Blocker {
     this.vx = vx;
     this.vy = 0;
     this.speedMultiplier = speedMultiplier || 1;
-    // Rise needed to lift this ball's centre from its floor contact point up to the
-    // shared apex line. Deliberately not scaled by speedMultiplier: the round speed
-    // changes how fast blockers travel sideways, never how high they bounce, so the
-    // apex stays the same on every speed and difficulty setting.
+    // The speed setting scales *time*, not height: gravity scales with the square of
+    // the multiplier while the launch velocity scales linearly, so apex = v²/2g comes
+    // out identical at every speed while SLOW genuinely rises and falls more gently.
+    // (Scaling only the velocity, as before, made SLOW fall just as hard as FAST.)
+    this.gravity = CONFIG.GRAVITY * this.speedMultiplier * this.speedMultiplier;
     const floorCentreY = CONFIG.BLOCKER_FLOOR_Y - this.radius;
     const rise = Math.max(0, floorCentreY - CONFIG.BLOCKER_APEX_Y);
-    this.bounceVy = -Math.sqrt(2 * CONFIG.GRAVITY * rise);
+    this.bounceVy = -Math.sqrt(2 * this.gravity * rise);
     this.alive = true;
     this.color = tier === 0 ? CONFIG.COLORS.pink : tier === 1 ? CONFIG.COLORS.yellow : CONFIG.COLORS.cyan;
   }
 
   update(dt) {
-    this.vy += CONFIG.GRAVITY * dt;
+    this.vy += this.gravity * dt;
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
@@ -413,6 +414,8 @@ class BonusBubble {
     this.y = y;
     this.vx = vx;
     this.speedMultiplier = speedMultiplier || 1;
+    // same time-scaling as the blockers, so pickups drift gently on SLOW too
+    this.gravity = CONFIG.GRAVITY * 0.6 * this.speedMultiplier * this.speedMultiplier;
     this.vy = -200 * this.speedMultiplier;
     this.radius = CONFIG.BONUS_BUBBLE_RADIUS;
     this.kind = kind || CONFIG.BONUS_KINDS[0];
@@ -428,7 +431,7 @@ class BonusBubble {
       this.alive = false;
       return;
     }
-    this.vy += CONFIG.GRAVITY * 0.6 * dt;
+    this.vy += this.gravity * dt;
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
