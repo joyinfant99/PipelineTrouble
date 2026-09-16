@@ -267,8 +267,13 @@ class Blocker {
     this.vx = vx;
     this.vy = 0;
     this.speedMultiplier = speedMultiplier || 1;
-    // fixed bounce apex for this tier — always rebounds to the same height, scaled by round speed
-    this.bounceVy = -Math.sqrt(2 * CONFIG.GRAVITY * tierCfg.bounceHeight) * this.speedMultiplier;
+    // Rise needed to lift this ball's centre from its floor contact point up to the
+    // shared apex line. Deliberately not scaled by speedMultiplier: the round speed
+    // changes how fast blockers travel sideways, never how high they bounce, so the
+    // apex stays the same on every speed and difficulty setting.
+    const floorCentreY = CONFIG.BLOCKER_FLOOR_Y - this.radius;
+    const rise = Math.max(0, floorCentreY - CONFIG.BLOCKER_APEX_Y);
+    this.bounceVy = -Math.sqrt(2 * CONFIG.GRAVITY * rise);
     this.alive = true;
     this.color = tier === 0 ? CONFIG.COLORS.pink : tier === 1 ? CONFIG.COLORS.yellow : CONFIG.COLORS.cyan;
   }

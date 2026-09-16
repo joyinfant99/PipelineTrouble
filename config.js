@@ -64,13 +64,19 @@ const CONFIG = {
   BUBBLE_SPEED_PRESETS: { slow: 0.72, normal: 1, fast: 1.4 },
 
   // Blocker tiers: size 0 = STALLED DEAL (largest), 1 = mid split, 2 = smallest.
-  // bounceHeight — like the original, each size always rebounds to the same apex
-  // above the floor line. Capped at (floor - 2 * radius) so nothing clips the ceiling.
   BLOCKER_TIERS: [
-    { radius: 46, speed: 120, mrr: 0, label: 'STALLED DEAL', bounceHeight: 405 },
-    { radius: 30, speed: 170, mrr: 0, label: 'SPLIT', bounceHeight: 385 },
-    { radius: 18, speed: 230, mrr: 0, label: 'BLOCKER', bounceHeight: 335 },
+    { radius: 46, speed: 120, mrr: 0, label: 'STALLED DEAL' },
+    { radius: 30, speed: 170, mrr: 0, label: 'SPLIT' },
+    { radius: 18, speed: 230, mrr: 0, label: 'BLOCKER' },
   ],
+
+  // Every blocker, whatever its size, rebounds until its centre reaches this line —
+  // one predictable ceiling to the bounce instead of small ones peaking far lower
+  // than big ones. It sits well above the player sprite (head top is y=468), so
+  // there is always a clear lane to shoot up through. Fixed-timestep integration
+  // means the apex actually lands a handful of pixels below this figure; the number
+  // that matters is that every size lands on the same line as every other.
+  BLOCKER_APEX_Y: 70,
 
   DEAL_MRR_VALUE: 12500, // points awarded per fully-cleared deal
 

@@ -290,8 +290,9 @@ class Game {
       const mSpeed = speed * this.speedMultiplier;
       const child1 = new Blocker(childTier, b.x - 10, b.y - 6, -mSpeed, labels[0], dealId, this.speedMultiplier);
       const child2 = new Blocker(childTier, b.x + 10, b.y - 6, mSpeed, labels[1], dealId, this.speedMultiplier);
-      child1.vy = -320 * this.speedMultiplier;
-      child2.vy = -320 * this.speedMultiplier;
+      // pop straight into the shared bounce rhythm so the split reads the same every time
+      child1.vy = child1.bounceVy;
+      child2.vy = child2.bounceVy;
       this.blockers.push(child1, child2);
       remaining += 2;
       AudioManager.split();
